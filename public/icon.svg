@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Figurinha Matchmaker">
+  <rect width="512" height="512" rx="96" fill="#020617"/>
+  <rect x="96" y="96" width="320" height="320" rx="32" fill="#10b981"/>
+  <rect x="136" y="136" width="240" height="240" rx="16" fill="#ecfdf5"/>
+  <text x="256" y="290" text-anchor="middle" font-size="120" font-family="Arial, sans-serif" font-weight="700" fill="#047857">FM</text>
+</svg>

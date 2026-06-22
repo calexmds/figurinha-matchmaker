@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Figurinha Matchmaker
 
-## Getting Started
+App de troca de figurinhas da Copa do Mundo 2026 com match automático dentro de grupos.
 
-First, run the development server:
+**Domínio:** https://figurinhamatchmaker.com.br
+
+## Stack
+
+- Next.js 16 + TypeScript + Tailwind
+- Supabase (Auth Google + PostgreSQL + RLS)
+- Vercel (deploy)
+
+## Setup rápido
+
+### 1. Supabase
+
+1. Crie um projeto em [supabase.com](https://supabase.com)
+2. No **SQL Editor**, execute na ordem:
+   - `supabase/schema.sql`
+   - `supabase/seed.sql`
+3. Em **Authentication → Providers**, ative **Google**
+4. Em **Authentication → URL Configuration**, adicione:
+   - Site URL: `https://figurinhamatchmaker.com.br`
+   - Redirect URLs:
+     - `http://localhost:3000/auth/callback`
+     - `https://figurinhamatchmaker.com.br/auth/callback`
+
+### 2. Google OAuth
+
+1. [Google Cloud Console](https://console.cloud.google.com) → Credentials → OAuth Client
+2. Authorized redirect URI: `https://SEU_PROJETO.supabase.co/auth/v1/callback`
+3. Copie Client ID e Secret para o Supabase (Google provider)
+
+### 3. Ambiente local
 
 ```bash
+cp .env.example .env.local
+# Preencha NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 4. Deploy Vercel
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Importe o repositório na Vercel
+2. Configure as mesmas env vars
+3. Domínio: `figurinhamatchmaker.com.br` (CNAME para Vercel)
+4. Atualize redirect URLs no Supabase com o domínio final
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Scripts
 
-## Learn More
+```bash
+npm run dev          # desenvolvimento
+npm run build        # build produção
+npm run db:seed      # regenerar supabase/seed.sql (980 figurinhas)
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Fluxo do usuário
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Landing → Entrar com Google
+2. Criar grupo ou abrir link `/join/CODIGO`
+3. Colar códigos das figurinhas
+4. Ver ranking de trocas no grupo
+5. Compartilhar convite ou proposta no WhatsApp
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Catálogo
 
-## Deploy on Vercel
+- 980 figurinhas: `00`, `FWC1–FWC19`, 48 seleções × 20
+- Seed gerado em `supabase/seed.sql`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Estrutura
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+src/app/
+  page.tsx              Landing
+  login/                Login
+  join/[code]/          Convite de grupo
+  auth/callback/        OAuth callback
+  (app)/home/           Dashboard
+  (app)/onboarding/     Cadastro de figurinhas
+  (app)/grupo/          Grupos e convite
+  (app)/trocas/         Ranking de match
+```
