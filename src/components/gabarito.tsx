@@ -28,6 +28,7 @@ export function Gabarito({
   );
   const [sheetCode, setSheetCode] = useState<string | null>(null);
   const [status, setStatus] = useState<SaveStatus>("idle");
+  const [query, setQuery] = useState("");
 
   const pending = useRef<Map<string, StickerEdit>>(new Map());
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -152,10 +153,14 @@ export function Gabarito({
   const isMarked = (code: string) =>
     mode === "dup" ? (dup[code] ?? 0) > 0 : (need[code] ?? 0) > 0;
 
-  const totalMarked =
-    mode === "dup"
-      ? Object.values(dup).reduce((a, b) => a + b, 0)
-      : Object.keys(need).length;
+  const totalRepetidas = Object.values(dup).reduce((a, b) => a + b, 0);
+  const distinctDup = Object.keys(dup).length;
+  const needCount = Object.keys(need).length;
+
+  const totalCells = sections.reduce((a, s) => a + s.cells.length, 0);
+  const covered = mode === "dup" ? distinctDup : needCount;
+  const progressPct =
+    totalCells > 0 ? Math.round((covered / totalCells) * 100) : 0;
 
   const sectionCount = (section: GabaritoSection) =>
     section.cells.filter((c) =>
@@ -163,6 +168,20 @@ export function Gabarito({
     ).length;
 
   const accent = mode === "dup" ? "#0f7b0f" : "#0067c0";
+
+  const normalize = (s: string) =>
+    s
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+
+  const q = normalize(query);
+  const filteredSections = q
+    ? sections.filter(
+        (s) => normalize(s.title).includes(q) || normalize(s.id).includes(q),
+      )
+    : sections;
 
   return (
     <div className="space-y-4">
@@ -195,10 +214,50 @@ export function Gabarito({
         <div className="mt-2 flex items-center justify-between text-xs">
           <span className="font-medium text-[#5f5f5f]">
             {mode === "dup"
-              ? `${totalMarked} repetida(s)`
-              : `${totalMarked} faltando`}
+              ? `${totalRepetidas} repetida(s) · ${distinctDup} tipos`
+              : `Faltam ${needCount} de ${totalCells}`}
           </span>
           <SaveBadge status={status} />
+        </div>
+        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[#e6e6e6]">
+          <div
+            className="h-full rounded-full transition-all"
+            style={{ width: `${progressPct}%`, background: accent }}
+          />
+        </div>
+
+        {/* Search */}
+        <div className="relative mt-2">
+          <input
+            type="text"
+            inputMode="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar seleção (ex.: Brasil, ARG)…"
+            className="w-full rounded-md border border-[#d0d0d0] bg-white py-2 pl-9 pr-9 text-sm text-[#1b1b1b] placeholder:text-[#9a9a9a] focus:border-[#0067c0] focus:outline-none"
+          />
+          <svg
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#9a9a9a"
+            strokeWidth="2"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          {query ? (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              aria-label="Limpar busca"
+              className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-[#8a8a8a]"
+            >
+              ✕
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -210,8 +269,13 @@ export function Gabarito({
 
       {/* Sections */}
       <div className="space-y-2">
-        {sections.map((section) => {
-          const isOpen = openSection === section.id;
+        {filteredSections.length === 0 ? (
+          <p className="rounded-lg border border-[#e6e6e6] bg-white p-4 text-center text-sm text-[#5f5f5f]">
+            Nenhuma seleção encontrada para “{query}”.
+          </p>
+        ) : null}
+        {filteredSections.map((section) => {
+          const isOpen = q ? true : openSection === section.id;
           const count = sectionCount(section);
           return (
             <div
