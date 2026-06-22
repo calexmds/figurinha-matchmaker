@@ -21,19 +21,19 @@ export default async function LandingPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-5 py-8 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
-      <section className="rounded-[2rem] border border-emerald-400/20 bg-gradient-to-br from-emerald-500/20 via-slate-900 to-slate-950 p-8 shadow-2xl">
-        <p className="text-sm font-semibold uppercase tracking-[0.25em] text-emerald-300">
+      <section className="rounded-2xl bg-gradient-to-br from-[#0067c0] to-[#004e93] p-8 text-white shadow-lg">
+        <p className="text-sm font-semibold uppercase tracking-[0.25em] text-white/80">
           Copa do Mundo 2026
         </p>
-        <h1 className="mt-4 text-4xl font-black leading-tight text-white sm:text-5xl">
+        <h1 className="mt-4 text-4xl font-black leading-tight sm:text-5xl">
           {APP_NAME}
         </h1>
-        <p className="mt-4 max-w-xl text-base leading-7 text-slate-200">
+        <p className="mt-4 max-w-xl text-base leading-7 text-white/90">
           Registre repetidas, entre no grupo da família ou amigos e descubra
           automaticamente as melhores trocas. Sem planilha, sem horas na mesa.
         </p>
 
-        <ul className="mt-6 space-y-2 text-sm text-slate-300">
+        <ul className="mt-6 space-y-2 text-sm text-white/90">
           <li>✓ {TOTAL_STICKERS} figurinhas do álbum oficial</li>
           <li>✓ Match automático dentro do seu grupo</li>
           <li>✓ Convite e proposta de troca no WhatsApp</li>
@@ -42,13 +42,13 @@ export default async function LandingPage() {
         <form action={login} className="mt-8 flex flex-col gap-3">
           <button
             type="submit"
-            className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition active:bg-slate-200"
+            className="inline-flex min-h-12 items-center justify-center rounded-md bg-white px-5 py-3 text-sm font-semibold text-[#0067c0] transition active:bg-[#eaeaea]"
           >
             Entrar com Google
           </button>
           <Link
             href="/login"
-            className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition active:bg-white/10"
+            className="inline-flex min-h-12 items-center justify-center rounded-md border border-white/30 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition active:bg-white/20"
           >
             Já tenho convite
           </Link>
@@ -62,25 +62,22 @@ export default async function LandingPage() {
             text: "Crie ou use o link de convite do WhatsApp.",
           },
           {
-            title: "2. Cole as listas",
-            text: "Repetidas + figurinhas que precisa — em segundos.",
+            title: "2. Marque suas figurinhas",
+            text: "Toque para marcar repetidas e o que falta — em segundos.",
           },
           {
             title: "3. Veja quem combina",
             text: "Ranking de trocas só com seu círculo.",
           },
         ].map((step) => (
-          <article
-            key={step.title}
-            className="rounded-3xl border border-white/10 bg-white/5 p-5"
-          >
-            <h2 className="font-semibold text-white">{step.title}</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-300">{step.text}</p>
+          <article key={step.title} className="fluent-card p-5">
+            <h2 className="font-semibold text-[#1b1b1b]">{step.title}</h2>
+            <p className="mt-2 text-sm leading-6 text-[#5f5f5f]">{step.text}</p>
           </article>
         ))}
       </section>
 
-      <p className="mt-8 text-center text-xs text-slate-500">
+      <p className="mt-8 text-center text-xs text-[#8a8a8a]">
         {APP_URL} · Projeto comunitário para colecionadores
       </p>
     </main>

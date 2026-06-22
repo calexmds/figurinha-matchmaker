@@ -245,6 +245,111 @@ export async function saveStickers(formData: FormData) {
   return saveCollection(formData);
 }
 
+export type StickerEdit = {
+  code: string;
+  kind: "dup" | "need";
+  quantity: number;
+};
+
+export async function applyStickerEdits(edits: StickerEdit[]) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { error: "Sessão expirada. Entre novamente." };
+  if (!Array.isArray(edits) || edits.length === 0) return { ok: true };
+  if (edits.length > 500) return { error: "Muitas alterações de uma vez." };
+
+  const codes = [...new Set(edits.map((e) => e.code))];
+  const { data: stickerRows, error: stickerError } = await supabase
+    .from("stickers")
+    .select("id, code")
+    .in("code", codes);
+
+  if (stickerError || !stickerRows) {
+    return { error: "Erro ao localizar figurinhas." };
+  }
+
+  const codeToId = new Map(stickerRows.map((row) => [row.code, row.id]));
+
+  const dupUpserts: Array<{
+    user_id: string;
+    sticker_id: string;
+    quantity: number;
+    updated_at: string;
+  }> = [];
+  const dupDeleteIds: string[] = [];
+  const needUpserts: Array<{
+    user_id: string;
+    sticker_id: string;
+    updated_at: string;
+  }> = [];
+  const needDeleteIds: string[] = [];
+  const now = new Date().toISOString();
+
+  for (const edit of edits) {
+    const stickerId = codeToId.get(edit.code);
+    if (!stickerId) continue;
+
+    if (edit.kind === "dup") {
+      if (edit.quantity > 0) {
+        dupUpserts.push({
+          user_id: user.id,
+          sticker_id: stickerId,
+          quantity: edit.quantity,
+          updated_at: now,
+        });
+      } else {
+        dupDeleteIds.push(stickerId);
+      }
+    } else {
+      if (edit.quantity > 0) {
+        needUpserts.push({
+          user_id: user.id,
+          sticker_id: stickerId,
+          updated_at: now,
+        });
+      } else {
+        needDeleteIds.push(stickerId);
+      }
+    }
+  }
+
+  if (dupUpserts.length > 0) {
+    const { error } = await supabase
+      .from("user_stickers")
+      .upsert(dupUpserts, { onConflict: "user_id,sticker_id" });
+    if (error) return { error: "Erro ao salvar repetidas." };
+  }
+  if (dupDeleteIds.length > 0) {
+    const { error } = await supabase
+      .from("user_stickers")
+      .delete()
+      .eq("user_id", user.id)
+      .in("sticker_id", dupDeleteIds);
+    if (error) return { error: "Erro ao remover repetidas." };
+  }
+  if (needUpserts.length > 0) {
+    const { error } = await supabase
+      .from("user_needs")
+      .upsert(needUpserts, { onConflict: "user_id,sticker_id" });
+    if (error) return { error: "Erro ao salvar lista de preciso." };
+  }
+  if (needDeleteIds.length > 0) {
+    const { error } = await supabase
+      .from("user_needs")
+      .delete()
+      .eq("user_id", user.id)
+      .in("sticker_id", needDeleteIds);
+    if (error) return { error: "Erro ao remover da lista de preciso." };
+  }
+
+  revalidatePath("/home");
+  revalidatePath("/trocas");
+  return { ok: true };
+}
+
 export async function setActiveGroup(groupId: string) {
   const supabase = await createClient();
   const {

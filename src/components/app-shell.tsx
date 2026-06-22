@@ -8,7 +8,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <div className="flex min-h-dvh flex-col bg-slate-950">
+    <div className="flex min-h-dvh flex-col bg-[#f3f3f3]">
       <AppHeader pathname={pathname} />
       <main className="mx-auto w-full max-w-lg flex-1 px-4 py-4 pb-28">
         {children}

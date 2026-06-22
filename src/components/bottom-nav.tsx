@@ -80,7 +80,7 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-slate-950/95 backdrop-blur-lg pb-[env(safe-area-inset-bottom)]"
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-[#e6e6e6] fluent-acrylic pb-[env(safe-area-inset-bottom)]"
       aria-label="Navegação principal"
     >
       <div className="mx-auto grid max-w-lg grid-cols-4">
@@ -94,8 +94,8 @@ export function BottomNav() {
               href={tab.href}
               className={`flex min-h-16 flex-col items-center justify-center gap-1 px-2 py-2 transition ${
                 active
-                  ? "text-emerald-400"
-                  : "text-slate-400 active:text-slate-200"
+                  ? "text-[#0067c0]"
+                  : "text-[#8a8a8a] active:text-[#5f5f5f]"
               }`}
             >
               {tab.icon(active)}

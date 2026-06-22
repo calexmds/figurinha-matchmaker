@@ -26,18 +26,18 @@ export default async function LoginPage({
 
   return (
     <main className="mx-auto flex min-h-full w-full max-w-md flex-col justify-center px-6 py-12">
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-300">
+      <div className="fluent-card p-8">
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#0067c0]">
           Copa 2026
         </p>
-        <h1 className="mt-3 text-3xl font-bold text-white">{APP_NAME}</h1>
-        <p className="mt-3 text-sm leading-6 text-slate-300">
+        <h1 className="mt-3 text-3xl font-bold text-[#1b1b1b]">{APP_NAME}</h1>
+        <p className="mt-3 text-sm leading-6 text-[#5f5f5f]">
           Entre com Google para registrar suas figurinhas, entrar no grupo e
           ver sugestões de troca.
         </p>
 
         {params.error ? (
-          <p className="mt-4 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          <p className="mt-4 rounded-md border border-[#f3c9c5] bg-[#fdf0ef] px-4 py-3 text-sm text-[#c42b1c]">
             Não foi possível entrar. Tente novamente.
             {params.reason ? (
               <span className="mt-1 block text-xs opacity-80">{params.reason}</span>
@@ -48,16 +48,16 @@ export default async function LoginPage({
         <form action={login} className="mt-8">
           <button
             type="submit"
-            className="flex w-full items-center justify-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+            className="flex w-full items-center justify-center gap-3 rounded-md border border-[#d0d0d0] bg-white px-4 py-3 text-sm font-semibold text-[#1b1b1b] transition hover:bg-[#f5f5f5]"
           >
             <GoogleIcon />
             Entrar com Google
           </button>
         </form>
 
-        <p className="mt-6 text-center text-xs text-slate-400">
+        <p className="mt-6 text-center text-xs text-[#8a8a8a]">
           Recebeu convite?{" "}
-          <Link href="/grupo" className="text-emerald-300 underline">
+          <Link href="/grupo" className="font-semibold text-[#0067c0] underline">
             Entrar com código
           </Link>
         </p>

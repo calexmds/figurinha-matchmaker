@@ -41,20 +41,21 @@ export default async function HomePage() {
       <InstallPrompt />
 
       <div>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-[#5f5f5f]">
           Olá, {profile?.name ?? "colecionador"}
         </p>
-        <h2 className="mt-1 text-2xl font-bold text-white">
+        <h2 className="mt-1 text-2xl font-bold text-[#1b1b1b]">
           {hasLists ? "Pronto para trocar" : "Cadastre suas listas"}
         </h2>
         {group ? (
-          <p className="mt-2 text-sm text-slate-300">
-            Grupo ativo: <strong className="text-white">{group.name}</strong>
+          <p className="mt-2 text-sm text-[#5f5f5f]">
+            Grupo ativo:{" "}
+            <strong className="text-[#1b1b1b]">{group.name}</strong>
           </p>
         ) : (
-          <p className="mt-2 text-sm text-amber-200">
+          <p className="mt-2 text-sm text-[#9a6700]">
             Você ainda não entrou em um grupo.{" "}
-            <Link href="/grupo" className="underline">
+            <Link href="/grupo" className="font-semibold underline">
               Crie ou entre agora
             </Link>
           </p>
@@ -81,13 +82,13 @@ export default async function HomePage() {
       </div>
 
       {!hasLists ? (
-        <div className="rounded-3xl border border-amber-400/20 bg-amber-500/10 p-5">
-          <p className="text-sm text-slate-200">
-            Comece colando suas repetidas e o que precisa — leva poucos minutos.
+        <div className="rounded-lg border border-[#ecdfc0] bg-[#fbf6ea] p-5">
+          <p className="text-sm text-[#1b1b1b]">
+            Comece marcando suas repetidas e o que precisa — leva poucos minutos.
           </p>
           <Link
             href="/onboarding"
-            className="mt-4 inline-flex min-h-11 items-center rounded-2xl bg-emerald-400 px-4 py-3 text-sm font-semibold text-slate-950"
+            className="mt-4 inline-flex min-h-11 items-center rounded-md bg-[#0067c0] px-4 py-3 text-sm font-semibold text-white active:bg-[#005aa8]"
           >
             Cadastrar agora
           </Link>
@@ -95,14 +96,14 @@ export default async function HomePage() {
       ) : null}
 
       {group && needs.length > 0 && availableInGroup > 0 ? (
-        <div className="rounded-3xl border border-emerald-400/20 bg-emerald-500/10 p-5">
-          <p className="text-sm font-semibold text-emerald-200">No seu grupo</p>
-          <p className="mt-2 text-2xl font-bold text-white">
+        <div className="rounded-lg border border-[#cfe9cf] bg-[#eef7ee] p-5">
+          <p className="text-sm font-semibold text-[#0f7b0f]">No seu grupo</p>
+          <p className="mt-2 text-2xl font-bold text-[#1b1b1b]">
             {availableInGroup} das que você precisa estão com alguém do grupo
           </p>
           <Link
             href="/trocas"
-            className="mt-4 inline-flex min-h-11 items-center rounded-2xl bg-emerald-400 px-4 py-3 text-sm font-semibold text-slate-950"
+            className="mt-4 inline-flex min-h-11 items-center rounded-md bg-[#0f7b0f] px-4 py-3 text-sm font-semibold text-white active:bg-[#0c640c]"
           >
             Ver sugestões de troca
           </Link>
@@ -112,7 +113,7 @@ export default async function HomePage() {
       <div className="flex flex-col gap-3">
         <Link
           href="/onboarding"
-          className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white"
+          className="inline-flex min-h-12 items-center justify-center rounded-md border border-[#d0d0d0] bg-white px-4 py-3 text-sm font-semibold text-[#1b1b1b] active:bg-[#f0f0f0]"
         >
           Atualizar listas
         </Link>

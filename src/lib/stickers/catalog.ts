@@ -1,4 +1,5 @@
 import { SPECIAL_STICKERS, TEAMS, TOTAL_STICKERS } from "@/lib/constants";
+import { getTeamInfo } from "@/lib/teams";
 
 export type StickerCatalogEntry = {
   code: string;
@@ -48,3 +49,54 @@ export function buildStickerCatalog(): StickerCatalogEntry[] {
 export const STICKER_CODES = new Set(
   buildStickerCatalog().map((sticker) => sticker.code.toUpperCase()),
 );
+
+export type GabaritoCell = {
+  code: string;
+  number: number | null;
+  label: string;
+};
+
+export type GabaritoSection = {
+  id: string;
+  kind: "special" | "team";
+  title: string;
+  flag: string;
+  cells: GabaritoCell[];
+};
+
+export function buildGabaritoSections(): GabaritoSection[] {
+  const sections: GabaritoSection[] = [];
+
+  sections.push({
+    id: "ESP",
+    kind: "special",
+    title: "Especiais",
+    flag: "⭐",
+    cells: SPECIAL_STICKERS.map((s) => ({
+      code: s.code,
+      number: null,
+      label: s.code,
+    })),
+  });
+
+  for (const team of TEAMS) {
+    const info = getTeamInfo(team);
+    const cells: GabaritoCell[] = [];
+    for (let i = 1; i <= 20; i++) {
+      cells.push({
+        code: `${team}${String(i).padStart(2, "0")}`,
+        number: i,
+        label: String(i).padStart(2, "0"),
+      });
+    }
+    sections.push({
+      id: team,
+      kind: "team",
+      title: info.name,
+      flag: info.flag,
+      cells,
+    });
+  }
+
+  return sections;
+}

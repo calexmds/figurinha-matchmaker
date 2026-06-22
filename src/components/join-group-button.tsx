@@ -9,7 +9,7 @@ export function JoinGroupButton({ loginHref }: JoinGroupButtonProps) {
     return (
       <Link
         href={loginHref}
-        className="flex w-full items-center justify-center rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+        className="flex w-full items-center justify-center rounded-md border border-[#d0d0d0] bg-white px-4 py-3 text-sm font-semibold text-[#1b1b1b] transition hover:bg-[#f5f5f5]"
       >
         Entrar com Google para participar
       </Link>
@@ -19,7 +19,7 @@ export function JoinGroupButton({ loginHref }: JoinGroupButtonProps) {
   return (
     <button
       type="submit"
-      className="flex w-full items-center justify-center rounded-2xl bg-emerald-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-300"
+      className="flex w-full items-center justify-center rounded-md bg-[#0067c0] px-4 py-3 text-sm font-semibold text-white transition active:bg-[#005aa8]"
     >
       Entrar no grupo
     </button>

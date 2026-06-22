@@ -15,14 +15,14 @@ export default async function TradesPage() {
 
   if (!group) {
     return (
-      <div className="rounded-3xl border border-amber-400/20 bg-amber-500/10 p-6">
-        <h2 className="text-xl font-bold text-white">Trocas</h2>
-        <p className="mt-2 text-sm text-slate-200">
+      <div className="rounded-lg border border-[#ecdfc0] bg-[#fbf6ea] p-6">
+        <h2 className="text-xl font-bold text-[#1b1b1b]">Trocas</h2>
+        <p className="mt-2 text-sm text-[#5f5f5f]">
           Entre ou crie um grupo para ver sugestões de troca.
         </p>
         <Link
           href="/grupo"
-          className="mt-4 inline-flex min-h-11 items-center rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-900"
+          className="mt-4 inline-flex min-h-11 items-center rounded-md bg-[#0067c0] px-4 py-3 text-sm font-semibold text-white active:bg-[#005aa8]"
         >
           Ir para Grupo
         </Link>
@@ -34,15 +34,15 @@ export default async function TradesPage() {
 
   if (stats.duplicateCount === 0 && stats.needCount === 0) {
     return (
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-        <h2 className="text-xl font-bold text-white">Trocas</h2>
-        <p className="mt-2 text-sm text-slate-300">
+      <div className="fluent-card p-6">
+        <h2 className="text-xl font-bold text-[#1b1b1b]">Trocas</h2>
+        <p className="mt-2 text-sm text-[#5f5f5f]">
           Cadastre suas repetidas e o que precisa para calcular as melhores
           trocas.
         </p>
         <Link
           href="/onboarding"
-          className="mt-4 inline-flex min-h-11 items-center rounded-2xl bg-emerald-400 px-4 py-3 text-sm font-semibold text-slate-950"
+          className="mt-4 inline-flex min-h-11 items-center rounded-md bg-[#0067c0] px-4 py-3 text-sm font-semibold text-white active:bg-[#005aa8]"
         >
           Cadastrar listas
         </Link>
@@ -64,15 +64,15 @@ export default async function TradesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold text-white">Sugestões de troca</h2>
-        <p className="mt-2 text-sm text-slate-300">
-          Grupo <strong className="text-white">{group.name}</strong> — com base
-          no que você precisa e no que tem repetido.
+        <h2 className="text-xl font-bold text-[#1b1b1b]">Sugestões de troca</h2>
+        <p className="mt-2 text-sm text-[#5f5f5f]">
+          Grupo <strong className="text-[#1b1b1b]">{group.name}</strong> — com
+          base no que você precisa e no que tem repetido.
         </p>
       </div>
 
       {matches.length === 0 ? (
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-slate-300">
+        <div className="fluent-card p-6 text-sm text-[#5f5f5f]">
           Nenhuma troca direta encontrada ainda. Convide mais pessoas ou
           atualize suas listas.
         </div>

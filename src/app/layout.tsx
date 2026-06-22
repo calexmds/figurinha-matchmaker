@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: APP_NAME,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
   },
   openGraph: {
     title: APP_NAME,
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#020617",
+  themeColor: "#f3f3f3",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -51,7 +51,7 @@ export default function RootLayout({
       lang="pt-BR"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-slate-950 text-slate-100">{children}</body>
+      <body className="min-h-full bg-[#f3f3f3] text-[#1b1b1b]">{children}</body>
     </html>
   );
 }

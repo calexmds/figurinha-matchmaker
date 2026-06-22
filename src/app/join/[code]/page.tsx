@@ -27,9 +27,9 @@ export default async function JoinPage({
   if (!group) {
     return (
       <main className="mx-auto flex min-h-full max-w-md flex-col justify-center px-6 py-12">
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
-          <h1 className="text-2xl font-bold text-white">Convite inválido</h1>
-          <p className="mt-3 text-sm text-slate-300">
+        <div className="fluent-card p-8 text-center">
+          <h1 className="text-2xl font-bold text-[#1b1b1b]">Convite inválido</h1>
+          <p className="mt-3 text-sm text-[#5f5f5f]">
             O código <strong>{inviteCode}</strong> não foi encontrado.
           </p>
         </div>
@@ -57,12 +57,12 @@ export default async function JoinPage({
 
   return (
     <main className="mx-auto flex min-h-full max-w-md flex-col justify-center px-6 py-12">
-      <div className="rounded-3xl border border-emerald-400/20 bg-emerald-500/10 p-8">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-300">
+      <div className="fluent-card p-8">
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#0067c0]">
           Convite
         </p>
-        <h1 className="mt-3 text-3xl font-bold text-white">{group.name}</h1>
-        <p className="mt-3 text-sm leading-6 text-slate-200">
+        <h1 className="mt-3 text-3xl font-bold text-[#1b1b1b]">{group.name}</h1>
+        <p className="mt-3 text-sm leading-6 text-[#5f5f5f]">
           Você foi convidado para trocar figurinhas no {APP_NAME}. Entre e
           registre suas repetidas para ver sugestões de troca com o grupo.
         </p>
