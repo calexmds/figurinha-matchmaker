@@ -1,8 +1,14 @@
-import { TOTAL_STICKERS } from "@/lib/constants";
-import { computeCollectionStats } from "@/lib/match";
+import { computeTradeStats } from "@/lib/match";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export async function getUserStickers(
+function extractCode(
+  sticker: { code: string } | { code: string }[] | null,
+): string | null {
+  if (!sticker) return null;
+  return Array.isArray(sticker) ? sticker[0]?.code ?? null : sticker.code;
+}
+
+export async function getUserDuplicates(
   supabase: SupabaseClient,
   userId: string,
 ) {
@@ -12,21 +18,41 @@ export async function getUserStickers(
     .eq("user_id", userId)
     .gt("quantity", 0);
 
-  return (data ?? []).map((row) => {
-    const sticker = row.stickers as { code: string } | { code: string }[] | null;
-    const code = Array.isArray(sticker) ? sticker[0]?.code : sticker?.code;
-    return { code: code ?? "", quantity: row.quantity };
-  }).filter((item) => item.code);
+  return (data ?? [])
+    .map((row) => ({
+      code: extractCode(
+        row.stickers as { code: string } | { code: string }[] | null,
+      ),
+      quantity: row.quantity,
+    }))
+    .filter((item): item is { code: string; quantity: number } => !!item.code);
 }
 
-export async function getUserCollectionStats(
+export async function getUserNeeds(supabase: SupabaseClient, userId: string) {
+  const { data } = await supabase
+    .from("user_needs")
+    .select("stickers(code)")
+    .eq("user_id", userId);
+
+  return (data ?? [])
+    .map((row) =>
+      extractCode(row.stickers as { code: string } | { code: string }[] | null),
+    )
+    .filter((code): code is string => !!code)
+    .sort();
+}
+
+export async function getUserTradeSummary(
   supabase: SupabaseClient,
   userId: string,
 ) {
-  const stickers = await getUserStickers(supabase, userId);
+  const duplicates = await getUserDuplicates(supabase, userId);
+  const needs = await getUserNeeds(supabase, userId);
+
   return {
-    stickers,
-    stats: computeCollectionStats(stickers, TOTAL_STICKERS),
+    duplicates,
+    needs,
+    stats: computeTradeStats(duplicates, needs),
   };
 }
 
@@ -66,34 +92,39 @@ export async function getActiveGroup(
   return g ?? null;
 }
 
-export async function getDuplicateAndMissingCodes(
+export async function countNeedsAvailableInGroup(
   supabase: SupabaseClient,
+  groupId: string,
   userId: string,
+  needs: string[],
 ) {
-  const stickers = await getUserStickers(supabase, userId);
-  const owned = new Set<string>();
-  const duplicates: string[] = [];
-  const missing: string[] = [];
+  if (needs.length === 0) return 0;
 
-  for (const sticker of stickers) {
-    owned.add(sticker.code);
-    if (sticker.quantity > 1) {
-      for (let i = 0; i < sticker.quantity - 1; i++) {
-        duplicates.push(sticker.code);
-      }
-    }
+  const { data: members } = await supabase
+    .from("group_members")
+    .select("user_id")
+    .eq("group_id", groupId)
+    .neq("user_id", userId);
+
+  if (!members?.length) return 0;
+
+  const memberIds = members.map((m) => m.user_id);
+  const { data: stickers } = await supabase
+    .from("user_stickers")
+    .select("stickers(code)")
+    .in("user_id", memberIds)
+    .gt("quantity", 0);
+
+  const duplicateCodes = new Set<string>();
+  for (const row of stickers ?? []) {
+    const code = extractCode(
+      row.stickers as { code: string } | { code: string }[] | null,
+    );
+    if (code) duplicateCodes.add(code);
   }
 
-  const { data: allCodes } = await supabase
-    .from("stickers")
-    .select("code")
-    .order("sort_order");
-
-  for (const row of allCodes ?? []) {
-    if (!owned.has(row.code)) {
-      missing.push(row.code);
-    }
-  }
-
-  return { duplicates, missing };
+  return needs.filter((code) => duplicateCodes.has(code)).length;
 }
+
+// Backwards-compatible alias used during refactor cleanup.
+export const getUserStickers = getUserDuplicates;

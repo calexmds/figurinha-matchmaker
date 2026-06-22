@@ -30,6 +30,26 @@ export function parseStickerInput(text: string): ParsedStickerInput[] {
     .sort((a, b) => a.code.localeCompare(b.code));
 }
 
+export function parseNeedsInput(text: string): string[] {
+  return parseStickerInput(text).map((item) => item.code);
+}
+
+export function formatDuplicatesForInput(
+  items: Array<{ code: string; quantity: number }>,
+): string {
+  const parts: string[] = [];
+  for (const item of items) {
+    for (let i = 0; i < item.quantity; i++) {
+      parts.push(item.code);
+    }
+  }
+  return parts.join(" ");
+}
+
+export function formatNeedsForInput(codes: string[]): string {
+  return codes.join(" ");
+}
+
 export function parseStickerLines(text: string): ParsedStickerInput[] {
   const lines = text.split(/\r?\n/);
   const counts = new Map<string, number>();

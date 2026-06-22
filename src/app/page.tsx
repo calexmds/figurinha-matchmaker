@@ -62,8 +62,8 @@ export default async function LandingPage() {
             text: "Crie ou use o link de convite do WhatsApp.",
           },
           {
-            title: "2. Cole os códigos",
-            text: "BRA01, FWC3, repetidas — em segundos.",
+            title: "2. Cole as listas",
+            text: "Repetidas + figurinhas que precisa — em segundos.",
           },
           {
             title: "3. Veja quem combina",

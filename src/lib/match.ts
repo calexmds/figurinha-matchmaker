@@ -1,56 +1,54 @@
 import type { TradeMatch } from "@/lib/types";
 
-type Inventory = {
+type TradeProfile = {
   userId: string;
   name: string;
   avatarUrl: string | null;
-  owned: Set<string>;
-  duplicates: Set<string>;
-  missing: Set<string>;
+  duplicateCodes: Set<string>;
+  needCodes: Set<string>;
 };
 
-function buildInventory(
+function buildTradeProfile(
   userId: string,
   name: string,
   avatarUrl: string | null,
-  stickers: Array<{ code: string; quantity: number }>,
-  allCodes: string[],
-): Inventory {
-  const owned = new Set<string>();
-  const duplicates = new Set<string>();
-
-  for (const sticker of stickers) {
-    if (sticker.quantity <= 0) continue;
-    owned.add(sticker.code);
-    if (sticker.quantity > 1) {
-      duplicates.add(sticker.code);
+  duplicates: Array<{ code: string; quantity: number }>,
+  needs: string[],
+): TradeProfile {
+  const duplicateCodes = new Set<string>();
+  for (const item of duplicates) {
+    if (item.quantity > 0) {
+      duplicateCodes.add(item.code);
     }
   }
 
-  const missing = new Set(
-    allCodes.filter((code) => !owned.has(code)),
-  );
-
-  return { userId, name, avatarUrl, owned, duplicates, missing };
+  return {
+    userId,
+    name,
+    avatarUrl,
+    duplicateCodes,
+    needCodes: new Set(needs),
+  };
 }
 
 export function computeTradeMatches(
   currentUserId: string,
-  currentStickers: Array<{ code: string; quantity: number }>,
+  currentDuplicates: Array<{ code: string; quantity: number }>,
+  currentNeeds: string[],
   members: Array<{
     userId: string;
     name: string;
     avatarUrl: string | null;
-    stickers: Array<{ code: string; quantity: number }>;
+    duplicates: Array<{ code: string; quantity: number }>;
+    needs: string[];
   }>,
-  allCodes: string[],
 ): TradeMatch[] {
-  const current = buildInventory(
+  const current = buildTradeProfile(
     currentUserId,
     "Você",
     null,
-    currentStickers,
-    allCodes,
+    currentDuplicates,
+    currentNeeds,
   );
 
   const matches: TradeMatch[] = [];
@@ -58,19 +56,19 @@ export function computeTradeMatches(
   for (const member of members) {
     if (member.userId === currentUserId) continue;
 
-    const other = buildInventory(
+    const other = buildTradeProfile(
       member.userId,
       member.name,
       member.avatarUrl,
-      member.stickers,
-      allCodes,
+      member.duplicates,
+      member.needs,
     );
 
-    const receive = [...current.missing].filter((code) =>
-      other.duplicates.has(code),
+    const receive = [...current.needCodes].filter((code) =>
+      other.duplicateCodes.has(code),
     );
-    const give = [...current.duplicates].filter((code) =>
-      other.missing.has(code),
+    const give = [...current.duplicateCodes].filter((code) =>
+      other.needCodes.has(code),
     );
 
     if (receive.length === 0 && give.length === 0) continue;
@@ -96,24 +94,18 @@ export function computeTradeMatches(
   return matches.sort((a, b) => b.score - a.score);
 }
 
-export function computeCollectionStats(
-  stickers: Array<{ code: string; quantity: number }>,
-  totalStickers: number,
+export function computeTradeStats(
+  duplicates: Array<{ code: string; quantity: number }>,
+  needs: string[],
 ) {
-  let owned = 0;
-  let duplicates = 0;
-
-  for (const sticker of stickers) {
-    if (sticker.quantity > 0) {
-      owned += 1;
-    }
-    if (sticker.quantity > 1) {
-      duplicates += sticker.quantity - 1;
-    }
+  let duplicateCount = 0;
+  for (const item of duplicates) {
+    duplicateCount += item.quantity;
   }
 
-  const missing = totalStickers - owned;
-  const percent = Math.round((owned / totalStickers) * 100);
-
-  return { owned, missing, duplicates, percent };
+  return {
+    duplicateTypes: duplicates.length,
+    duplicateCount,
+    needCount: needs.length,
+  };
 }

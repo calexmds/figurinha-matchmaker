@@ -1,5 +1,4 @@
 import Link from "next/link";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireUser } from "@/lib/auth";
 import { InstallPrompt } from "@/components/install-prompt";
 import { StatCard } from "@/components/stat-card";
@@ -8,37 +7,45 @@ import {
   buildProfileMessage,
 } from "@/components/whatsapp-share";
 import {
+  countNeedsAvailableInGroup,
   getActiveGroup,
-  getDuplicateAndMissingCodes,
-  getUserCollectionStats,
+  getUserTradeSummary,
 } from "@/lib/data";
 
 export default async function HomePage() {
   const { supabase, user, profile } = await requireUser();
-  const { stats } = await getUserCollectionStats(supabase, user.id);
+  const { duplicates, needs, stats } = await getUserTradeSummary(
+    supabase,
+    user.id,
+  );
   const group = await getActiveGroup(
     supabase,
     user.id,
     profile?.active_group_id ?? null,
   );
-  const { duplicates, missing } = await getDuplicateAndMissingCodes(
-    supabase,
-    user.id,
-  );
 
   const availableInGroup =
-    group && stats.owned > 0
-      ? await countMissingAvailableInGroup(supabase, group.id, user.id, missing)
+    group && needs.length > 0
+      ? await countNeedsAvailableInGroup(
+          supabase,
+          group.id,
+          user.id,
+          needs,
+        )
       : 0;
+
+  const hasLists = stats.duplicateCount > 0 || stats.needCount > 0;
 
   return (
     <div className="space-y-6">
       <InstallPrompt />
 
       <div>
-        <p className="text-sm text-slate-400">Olá, {profile?.name ?? "colecionador"}</p>
+        <p className="text-sm text-slate-400">
+          Olá, {profile?.name ?? "colecionador"}
+        </p>
         <h2 className="mt-1 text-2xl font-bold text-white">
-          Álbum {stats.percent}% completo
+          {hasLists ? "Pronto para trocar" : "Cadastre suas listas"}
         </h2>
         {group ? (
           <p className="mt-2 text-sm text-slate-300">
@@ -55,79 +62,70 @@ export default async function HomePage() {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <StatCard label="Possui" value={stats.owned} accent="green" />
-        <StatCard label="Faltam" value={stats.missing} accent="blue" />
-        <StatCard label="Repetidas" value={stats.duplicates} accent="yellow" />
-        <StatCard label="Completo" value={`${stats.percent}%`} accent="white" />
+        <StatCard
+          label="Repetidas"
+          value={stats.duplicateCount}
+          accent="yellow"
+        />
+        <StatCard label="Preciso" value={stats.needCount} accent="blue" />
+        <StatCard
+          label="Tipos repetidos"
+          value={stats.duplicateTypes}
+          accent="green"
+        />
+        <StatCard
+          label="No grupo p/ você"
+          value={availableInGroup}
+          accent="white"
+        />
       </div>
 
-      {group && missing.length > 0 ? (
-        <div className="rounded-3xl border border-emerald-400/20 bg-emerald-500/10 p-5">
-          <p className="text-sm font-semibold text-emerald-200">
-            No seu grupo
+      {!hasLists ? (
+        <div className="rounded-3xl border border-amber-400/20 bg-amber-500/10 p-5">
+          <p className="text-sm text-slate-200">
+            Comece colando suas repetidas e o que precisa — leva poucos minutos.
           </p>
+          <Link
+            href="/onboarding"
+            className="mt-4 inline-flex min-h-11 items-center rounded-2xl bg-emerald-400 px-4 py-3 text-sm font-semibold text-slate-950"
+          >
+            Cadastrar agora
+          </Link>
+        </div>
+      ) : null}
+
+      {group && needs.length > 0 && availableInGroup > 0 ? (
+        <div className="rounded-3xl border border-emerald-400/20 bg-emerald-500/10 p-5">
+          <p className="text-sm font-semibold text-emerald-200">No seu grupo</p>
           <p className="mt-2 text-2xl font-bold text-white">
-            {availableInGroup} figurinhas que faltam estão com alguém do grupo
+            {availableInGroup} das que você precisa estão com alguém do grupo
           </p>
           <Link
             href="/trocas"
-            className="mt-4 inline-flex rounded-2xl bg-emerald-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-300"
+            className="mt-4 inline-flex min-h-11 items-center rounded-2xl bg-emerald-400 px-4 py-3 text-sm font-semibold text-slate-950"
           >
             Ver sugestões de troca
           </Link>
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-3 sm:flex-row">
+      <div className="flex flex-col gap-3">
         <Link
           href="/onboarding"
-          className="inline-flex flex-1 items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+          className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white"
         >
-          Atualizar figurinhas
+          Atualizar listas
         </Link>
-        {stats.duplicates > 0 || missing.length > 0 ? (
+        {hasLists ? (
           <WhatsAppShareButton
             message={buildProfileMessage(
-              [...new Set(duplicates.map((c) => c))],
-              missing.slice(0, 20),
+              duplicates.map((d) => d.code),
+              needs.slice(0, 30),
             )}
-            className="flex-1"
+            className="w-full"
           />
         ) : null}
       </div>
     </div>
   );
-}
-
-async function countMissingAvailableInGroup(
-  supabase: SupabaseClient,
-  groupId: string,
-  userId: string,
-  missing: string[],
-) {
-  if (missing.length === 0) return 0;
-
-  const { data: members } = await supabase
-    .from("group_members")
-    .select("user_id")
-    .eq("group_id", groupId)
-    .neq("user_id", userId);
-
-  if (!members?.length) return 0;
-
-  const memberIds = members.map((m) => m.user_id);
-  const { data: stickers } = await supabase
-    .from("user_stickers")
-    .select("quantity, stickers(code)")
-    .in("user_id", memberIds)
-    .gt("quantity", 1);
-
-  const duplicateCodes = new Set<string>();
-  for (const row of stickers ?? []) {
-    const sticker = row.stickers as { code: string } | { code: string }[] | null;
-    const code = Array.isArray(sticker) ? sticker[0]?.code : sticker?.code;
-    if (code) duplicateCodes.add(code);
-  }
-
-  return missing.filter((code) => duplicateCodes.has(code)).length;
 }

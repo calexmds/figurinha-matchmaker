@@ -6,8 +6,8 @@ import { revalidatePath } from "next/cache";
 import { APP_URL } from "@/lib/constants";
 import { generateInviteCode, normalizeInviteCode } from "@/lib/invite";
 import {
+  parseNeedsInput,
   parseStickerInput,
-  parseStickerLines,
 } from "@/lib/stickers/parse";
 import { createClient } from "@/lib/supabase/server";
 
@@ -147,7 +147,7 @@ export async function createGroup(formData: FormData) {
   return { error: "Não foi possível criar o grupo. Tente novamente." };
 }
 
-export async function saveStickers(formData: FormData) {
+export async function saveCollection(formData: FormData) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -155,47 +155,97 @@ export async function saveStickers(formData: FormData) {
 
   if (!user) redirect("/login");
 
-  const mode = String(formData.get("mode") ?? "paste");
-  const raw = String(formData.get("stickers") ?? "");
-  const parsed =
-    mode === "lines" ? parseStickerLines(raw) : parseStickerInput(raw);
+  const duplicatesRaw = String(formData.get("duplicates") ?? "");
+  const needsRaw = String(formData.get("needs") ?? "");
 
-  if (parsed.length === 0) {
-    return { error: "Nenhum código válido encontrado." };
+  if (!duplicatesRaw.trim() && !needsRaw.trim()) {
+    return { error: "Informe repetidas ou figurinhas que precisa." };
   }
 
-  const codes = parsed.map((item) => item.code);
-  const { data: stickerRows, error: stickerError } = await supabase
-    .from("stickers")
-    .select("id, code")
-    .in("code", codes);
+  const parsed = parseStickerInput(duplicatesRaw);
+  const { error: deleteDuplicatesError } = await supabase
+    .from("user_stickers")
+    .delete()
+    .eq("user_id", user.id);
 
-  if (stickerError || !stickerRows) {
-    return { error: "Erro ao buscar figurinhas." };
+  if (deleteDuplicatesError) {
+    return { error: "Erro ao atualizar repetidas." };
   }
 
-  const codeToId = new Map(stickerRows.map((row) => [row.code, row.id]));
-  const upserts = parsed
-    .filter((item) => codeToId.has(item.code))
-    .map((item) => ({
+  if (parsed.length > 0) {
+    const codes = parsed.map((item) => item.code);
+    const { data: stickerRows, error: stickerError } = await supabase
+      .from("stickers")
+      .select("id, code")
+      .in("code", codes);
+
+    if (stickerError || !stickerRows) {
+      return { error: "Erro ao buscar figurinhas." };
+    }
+
+    const codeToId = new Map(stickerRows.map((row) => [row.code, row.id]));
+    const inserts = parsed
+      .filter((item) => codeToId.has(item.code))
+      .map((item) => ({
+        user_id: user.id,
+        sticker_id: codeToId.get(item.code)!,
+        quantity: item.quantity,
+        updated_at: new Date().toISOString(),
+      }));
+
+    const { error: insertError } = await supabase
+      .from("user_stickers")
+      .insert(inserts);
+
+    if (insertError) {
+      return { error: "Erro ao salvar repetidas." };
+    }
+  }
+
+  const needCodes = parseNeedsInput(needsRaw);
+  const { error: deleteNeedsError } = await supabase
+    .from("user_needs")
+    .delete()
+    .eq("user_id", user.id);
+
+  if (deleteNeedsError) {
+    return { error: "Erro ao atualizar lista de preciso." };
+  }
+
+  if (needCodes.length > 0) {
+    const { data: stickerRows, error: stickerError } = await supabase
+      .from("stickers")
+      .select("id, code")
+      .in("code", needCodes);
+
+    if (stickerError || !stickerRows) {
+      return { error: "Erro ao buscar figurinhas." };
+    }
+
+    const inserts = stickerRows.map((row) => ({
       user_id: user.id,
-      sticker_id: codeToId.get(item.code)!,
-      quantity: item.quantity,
+      sticker_id: row.id,
       updated_at: new Date().toISOString(),
     }));
 
-  const { error: upsertError } = await supabase
-    .from("user_stickers")
-    .upsert(upserts, { onConflict: "user_id,sticker_id" });
+    const { error: insertNeedsError } = await supabase
+      .from("user_needs")
+      .insert(inserts);
 
-  if (upsertError) {
-    return { error: "Erro ao salvar figurinhas." };
+    if (insertNeedsError) {
+      return { error: "Erro ao salvar figurinhas que precisa." };
+    }
   }
 
   revalidatePath("/home");
   revalidatePath("/trocas");
   revalidatePath("/onboarding");
   redirect("/home");
+}
+
+/** @deprecated Use saveCollection */
+export async function saveStickers(formData: FormData) {
+  return saveCollection(formData);
 }
 
 export async function setActiveGroup(groupId: string) {
@@ -243,32 +293,45 @@ export async function getGroupTradeData(groupId: string) {
   if (!members) return null;
 
   const userIds = members.map((m) => m.user_id);
+
   const { data: allUserStickers } = await supabase
     .from("user_stickers")
     .select("user_id, quantity, stickers(code)")
     .in("user_id", userIds)
     .gt("quantity", 0);
 
-  const { data: allStickerCodes } = await supabase
-    .from("stickers")
-    .select("code")
-    .order("sort_order");
+  const { data: allUserNeeds } = await supabase
+    .from("user_needs")
+    .select("user_id, stickers(code)")
+    .in("user_id", userIds);
 
-  const inventoryByUser = new Map<
+  const duplicatesByUser = new Map<
     string,
     Array<{ code: string; quantity: number }>
   >();
+  const needsByUser = new Map<string, string[]>();
 
   for (const row of allUserStickers ?? []) {
     const sticker = row.stickers as { code: string } | { code: string }[] | null;
     const code = Array.isArray(sticker) ? sticker[0]?.code : sticker?.code;
     if (!code) continue;
-    const list = inventoryByUser.get(row.user_id) ?? [];
+    const list = duplicatesByUser.get(row.user_id) ?? [];
     list.push({ code, quantity: row.quantity });
-    inventoryByUser.set(row.user_id, list);
+    duplicatesByUser.set(row.user_id, list);
   }
 
-  const currentStickers = inventoryByUser.get(user.id) ?? [];
+  for (const row of allUserNeeds ?? []) {
+    const sticker = row.stickers as { code: string } | { code: string }[] | null;
+    const code = Array.isArray(sticker) ? sticker[0]?.code : sticker?.code;
+    if (!code) continue;
+    const list = needsByUser.get(row.user_id) ?? [];
+    list.push(code);
+    needsByUser.set(row.user_id, list);
+  }
+
+  const currentDuplicates = duplicatesByUser.get(user.id) ?? [];
+  const currentNeeds = needsByUser.get(user.id) ?? [];
+
   const memberData = members
     .filter((m) => m.user_id !== user.id)
     .map((m) => {
@@ -281,14 +344,15 @@ export async function getGroupTradeData(groupId: string) {
         userId: m.user_id,
         name: p?.name ?? "Colecionador",
         avatarUrl: p?.avatar_url ?? null,
-        stickers: inventoryByUser.get(m.user_id) ?? [],
+        duplicates: duplicatesByUser.get(m.user_id) ?? [],
+        needs: needsByUser.get(m.user_id) ?? [],
       };
     });
 
   return {
     currentUserId: user.id,
-    currentStickers,
+    currentDuplicates,
+    currentNeeds,
     members: memberData,
-    allCodes: (allStickerCodes ?? []).map((s) => s.code),
   };
 }

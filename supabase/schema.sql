@@ -32,6 +32,15 @@ CREATE TABLE IF NOT EXISTS user_stickers (
   UNIQUE (user_id, sticker_id)
 );
 
+-- Repetidas disponíveis para troca (cadastro explícito pelo usuário)
+CREATE TABLE IF NOT EXISTS user_needs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  sticker_id UUID NOT NULL REFERENCES stickers(id) ON DELETE CASCADE,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id, sticker_id)
+);
+
 CREATE TABLE IF NOT EXISTS groups (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
@@ -53,6 +62,7 @@ CREATE TABLE IF NOT EXISTS group_members (
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_stickers_user_id ON user_stickers(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_needs_user_id ON user_needs(user_id);
 CREATE INDEX IF NOT EXISTS idx_group_members_group_id ON group_members(group_id);
 CREATE INDEX IF NOT EXISTS idx_group_members_user_id ON group_members(user_id);
 CREATE INDEX IF NOT EXISTS idx_stickers_team ON stickers(team);
@@ -117,6 +127,7 @@ $$;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stickers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_stickers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_needs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE groups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE group_members ENABLE ROW LEVEL SECURITY;
 
@@ -148,6 +159,23 @@ CREATE POLICY "user_stickers_update_own" ON user_stickers FOR UPDATE
 
 DROP POLICY IF EXISTS "user_stickers_delete_own" ON user_stickers;
 CREATE POLICY "user_stickers_delete_own" ON user_stickers FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- User needs (figurinhas que preciso)
+DROP POLICY IF EXISTS "user_needs_read" ON user_needs;
+CREATE POLICY "user_needs_read" ON user_needs FOR SELECT
+  USING (auth.uid() = user_id OR public.shares_group_with(user_id));
+
+DROP POLICY IF EXISTS "user_needs_insert_own" ON user_needs;
+CREATE POLICY "user_needs_insert_own" ON user_needs FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "user_needs_update_own" ON user_needs;
+CREATE POLICY "user_needs_update_own" ON user_needs FOR UPDATE
+  USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "user_needs_delete_own" ON user_needs;
+CREATE POLICY "user_needs_delete_own" ON user_needs FOR DELETE
   USING (auth.uid() = user_id);
 
 -- Groups
