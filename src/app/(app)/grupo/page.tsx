@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createGroup, setActiveGroup } from "@/app/actions";
+import { createGroup, setActiveGroup, signOut } from "@/app/actions";
 import { requireUser } from "@/lib/auth";
 import {
   WhatsAppShareButton,
@@ -152,6 +152,15 @@ export default async function GroupPage() {
           </div>
         </section>
       ) : null}
+
+      <form action={signOut} className="pt-2">
+        <button
+          type="submit"
+          className="min-h-11 w-full rounded-2xl border border-white/10 px-4 py-3 text-sm font-medium text-slate-400"
+        >
+          Sair da conta
+        </button>
+      </form>
     </div>
   );
 }

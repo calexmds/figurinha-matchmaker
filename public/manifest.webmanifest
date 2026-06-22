@@ -2,17 +2,31 @@
   "name": "Figurinha Matchmaker",
   "short_name": "Figurinhas",
   "description": "Match automático de figurinhas Copa 2026 no seu grupo",
-  "start_url": "/",
+  "start_url": "/home",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#020617",
   "theme_color": "#020617",
   "lang": "pt-BR",
   "orientation": "portrait-primary",
+  "categories": ["sports", "social"],
   "icons": [
     {
-      "src": "/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/icon",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/apple-icon",
+      "sizes": "180x180",
+      "type": "image/png",
       "purpose": "any"
     }
   ]

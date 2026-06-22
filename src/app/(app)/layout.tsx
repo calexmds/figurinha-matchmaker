@@ -1,4 +1,4 @@
-import { AppNav } from "@/components/app-nav";
+import { AppShell } from "@/components/app-shell";
 import { requireUser } from "@/lib/auth";
 
 export default async function AppLayout({
@@ -8,10 +8,5 @@ export default async function AppLayout({
 }) {
   await requireUser();
 
-  return (
-    <>
-      <AppNav />
-      <div className="mx-auto w-full max-w-3xl flex-1 px-4 py-6">{children}</div>
-    </>
-  );
+  return <AppShell>{children}</AppShell>;
 }

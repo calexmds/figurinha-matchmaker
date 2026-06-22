@@ -5,6 +5,28 @@
   --font-mono: var(--font-geist-mono);
 }
 
+html {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
 body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  overscroll-behavior-y: none;
+}
+
+input,
+textarea,
+button,
+select {
+  font-size: 16px;
+}
+
+@media (min-width: 768px) {
+  input,
+  textarea,
+  button,
+  select {
+    font-size: inherit;
+  }
 }

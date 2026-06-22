@@ -20,7 +20,7 @@ export default async function LandingPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-full w-full max-w-3xl flex-col px-6 py-10">
+    <main className="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-5 py-8 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
       <section className="rounded-[2rem] border border-emerald-400/20 bg-gradient-to-br from-emerald-500/20 via-slate-900 to-slate-950 p-8 shadow-2xl">
         <p className="text-sm font-semibold uppercase tracking-[0.25em] text-emerald-300">
           Copa do Mundo 2026
@@ -39,16 +39,16 @@ export default async function LandingPage() {
           <li>✓ Convite e proposta de troca no WhatsApp</li>
         </ul>
 
-        <form action={login} className="mt-8 flex flex-col gap-3 sm:flex-row">
+        <form action={login} className="mt-8 flex flex-col gap-3">
           <button
             type="submit"
-            className="inline-flex flex-1 items-center justify-center rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+            className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition active:bg-slate-200"
           >
             Entrar com Google
           </button>
           <Link
             href="/login"
-            className="inline-flex flex-1 items-center justify-center rounded-2xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+            className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition active:bg-white/10"
           >
             Já tenho convite
           </Link>

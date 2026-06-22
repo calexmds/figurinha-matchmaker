@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireUser } from "@/lib/auth";
+import { InstallPrompt } from "@/components/install-prompt";
 import { StatCard } from "@/components/stat-card";
 import {
   WhatsAppShareButton,
@@ -32,11 +33,13 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-6">
+      <InstallPrompt />
+
       <div>
         <p className="text-sm text-slate-400">Olá, {profile?.name ?? "colecionador"}</p>
-        <h1 className="mt-1 text-3xl font-bold text-white">
+        <h2 className="mt-1 text-2xl font-bold text-white">
           Álbum {stats.percent}% completo
-        </h1>
+        </h2>
         {group ? (
           <p className="mt-2 text-sm text-slate-300">
             Grupo ativo: <strong className="text-white">{group.name}</strong>
