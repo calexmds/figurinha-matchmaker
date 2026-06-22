@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; error?: string }>;
+  searchParams: Promise<{ next?: string; error?: string; reason?: string }>;
 }) {
   const params = await searchParams;
   const supabase = await createClient();
@@ -39,6 +39,9 @@ export default async function LoginPage({
         {params.error ? (
           <p className="mt-4 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-200">
             Não foi possível entrar. Tente novamente.
+            {params.reason ? (
+              <span className="mt-1 block text-xs opacity-80">{params.reason}</span>
+            ) : null}
           </p>
         ) : null}
 

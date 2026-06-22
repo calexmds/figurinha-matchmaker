@@ -3,28 +3,25 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { APP_URL } from "@/lib/constants";
+import { createClient } from "@/lib/supabase/server";
+import { getSiteUrl } from "@/lib/site-url";
 import { generateInviteCode, normalizeInviteCode } from "@/lib/invite";
 import {
   parseNeedsInput,
   parseStickerInput,
 } from "@/lib/stickers/parse";
-import { createClient } from "@/lib/supabase/server";
 
 const PENDING_INVITE_COOKIE = "pending_invite_code";
 
 export async function signInWithGoogle(returnTo?: string) {
   const supabase = await createClient();
-  const redirectTo = `${APP_URL}/auth/callback${returnTo ? `?next=${encodeURIComponent(returnTo)}` : ""}`;
+  const siteUrl = await getSiteUrl();
+  const redirectTo = `${siteUrl}/auth/callback${returnTo ? `?next=${encodeURIComponent(returnTo)}` : ""}`;
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
       redirectTo,
-      queryParams: {
-        access_type: "offline",
-        prompt: "consent",
-      },
     },
   });
 
