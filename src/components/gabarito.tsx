@@ -289,8 +289,15 @@ export function Gabarito({
               >
                 <span className="flex items-center gap-3">
                   <span className="text-xl">{section.flag}</span>
-                  <span className="font-semibold text-[#1b1b1b]">
-                    {section.title}
+                  <span className="flex flex-col leading-tight">
+                    <span className="font-bold tracking-wide text-[#1b1b1b]">
+                      {section.kind === "team" ? section.id : section.title}
+                    </span>
+                    {section.kind === "team" ? (
+                      <span className="text-xs text-[#8a8a8a]">
+                        {section.title}
+                      </span>
+                    ) : null}
                   </span>
                 </span>
                 <span className="flex items-center gap-2">

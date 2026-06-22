@@ -34,7 +34,7 @@ Entra aqui para cruzar repetidas e ver sugestões de troca (só nosso grupo):
 
 👉 ${APP_URL}/join/${inviteCode}
 
-Entra com Google e cola suas repetidas. Leva 2 minutos.`;
+Entra com Google e marca suas repetidas tocando no gabarito. Leva 2 minutos.`;
 }
 
 export function buildTradeMessage(
