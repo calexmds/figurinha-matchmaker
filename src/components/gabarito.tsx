@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { applyStickerEdits, type StickerEdit } from "@/app/actions";
+import type { StickerEdit } from "@/lib/stickers/persist-edits";
 import type { GabaritoSection } from "@/lib/stickers/catalog";
 
 type Mode = "dup" | "need";
@@ -28,6 +28,7 @@ export function Gabarito({
   );
   const [sheetCode, setSheetCode] = useState<string | null>(null);
   const [status, setStatus] = useState<SaveStatus>("idle");
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [query, setQuery] = useState("");
 
   const pending = useRef<Map<string, StickerEdit>>(new Map());
@@ -35,18 +36,53 @@ export function Gabarito({
   const longPressFired = useRef(false);
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const flush = useCallback(async () => {
-    if (timer.current) {
-      clearTimeout(timer.current);
-      timer.current = null;
-    }
-    if (pending.current.size === 0) return;
-    const edits = [...pending.current.values()];
-    pending.current.clear();
-    setStatus("saving");
-    const result = await applyStickerEdits(edits);
-    setStatus(result && "error" in result ? "error" : "saved");
-  }, []);
+  const postEdits = useCallback(
+    async (edits: StickerEdit[], keepalive = false) => {
+      const res = await fetch("/api/stickers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ edits }),
+        keepalive,
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        detail?: string;
+      };
+      if (!res.ok) {
+        return {
+          error: data.error ?? "Erro ao salvar.",
+          detail: data.detail,
+        };
+      }
+      return { ok: true as const };
+    },
+    [],
+  );
+
+  const flush = useCallback(
+    async (keepalive = false) => {
+      if (timer.current) {
+        clearTimeout(timer.current);
+        timer.current = null;
+      }
+      if (pending.current.size === 0) return;
+      const edits = [...pending.current.values()];
+      pending.current.clear();
+      setStatus("saving");
+      setErrorDetail(null);
+      const result = await postEdits(edits, keepalive);
+      if ("error" in result) {
+        setStatus("error");
+        setErrorDetail(result.detail ?? result.error ?? "Erro ao salvar.");
+        edits.forEach((e) =>
+          pending.current.set(`${e.kind}:${e.code}`, e),
+        );
+      } else {
+        setStatus("saved");
+      }
+    },
+    [postEdits],
+  );
 
   const scheduleFlush = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
@@ -59,6 +95,11 @@ export function Gabarito({
     (kind: Mode, code: string, quantity: number) => {
       pending.current.set(`${kind}:${code}`, { kind, code, quantity });
       setStatus("saving");
+      if (kind === "need") {
+        if (timer.current) clearTimeout(timer.current);
+        void flush();
+        return;
+      }
       if (pending.current.size >= 40) {
         void flush();
       } else {
@@ -70,14 +111,16 @@ export function Gabarito({
 
   useEffect(() => {
     function onHide() {
-      if (document.visibilityState === "hidden") void flush();
+      if (document.visibilityState === "hidden" && pending.current.size > 0) {
+        void flush(true);
+      }
     }
     document.addEventListener("visibilitychange", onHide);
     window.addEventListener("pagehide", onHide);
     return () => {
       document.removeEventListener("visibilitychange", onHide);
       window.removeEventListener("pagehide", onHide);
-      void flush();
+      void flush(true);
     };
   }, [flush]);
 
@@ -186,7 +229,7 @@ export function Gabarito({
   return (
     <div className="space-y-4">
       {/* Mode toggle */}
-      <div className="sticky top-[60px] z-10 -mx-4 px-4 py-2 fluent-acrylic">
+      <div className="sticky top-[60px] z-10 -mx-4 border-b border-[#e6e6e6] bg-white px-4 py-2">
         <div className="grid grid-cols-2 gap-1 rounded-lg border border-[#e6e6e6] bg-[#ededed] p-1">
           <button
             type="button"
@@ -219,6 +262,11 @@ export function Gabarito({
           </span>
           <SaveBadge status={status} />
         </div>
+        {errorDetail ? (
+          <p className="mt-1 rounded-md border border-[#f3c9c5] bg-[#fdf0ef] px-2 py-1.5 text-[11px] leading-4 text-[#c42b1c]">
+            {errorDetail}
+          </p>
+        ) : null}
         <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[#e6e6e6]">
           <div
             className="h-full rounded-full transition-all"
@@ -324,7 +372,7 @@ export function Gabarito({
               </button>
 
               {isOpen ? (
-                <div className="grid grid-cols-4 gap-2 border-t border-[#eee] p-3 sm:grid-cols-5">
+                <div className="grid grid-cols-3 gap-2 border-t border-[#eee] p-3 sm:grid-cols-4">
                   {section.cells.map((cell) => {
                     const marked = isMarked(cell.code);
                     const qty = dup[cell.code] ?? 0;
@@ -337,25 +385,16 @@ export function Gabarito({
                         onPointerLeave={handlePointerEnd}
                         onPointerCancel={handlePointerEnd}
                         onClick={() => handleClick(cell.code)}
-                        className={`relative flex aspect-square select-none flex-col items-center justify-center rounded-md border text-center transition ${
+                        className={`relative flex aspect-[4/3] select-none items-center justify-center rounded-md border px-0.5 text-center transition ${
                           marked
                             ? "border-transparent text-white"
-                            : "border-[#e0e0e0] bg-[#fafafa] text-[#8a8a8a]"
+                            : "border-[#e0e0e0] bg-[#fafafa] text-[#5f5f5f]"
                         }`}
                         style={marked ? { background: accent } : undefined}
                       >
-                        <span className="text-sm font-bold leading-none">
+                        <span className="text-[10px] font-bold leading-tight tracking-tight sm:text-[11px]">
                           {cell.label}
                         </span>
-                        {section.kind === "team" ? (
-                          <span
-                            className={`mt-0.5 text-[9px] leading-none ${
-                              marked ? "text-white/70" : "text-[#b0b0b0]"
-                            }`}
-                          >
-                            {section.id}
-                          </span>
-                        ) : null}
                         {mode === "dup" && qty > 1 ? (
                           <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#1b1b1b] px-1 text-[10px] font-bold text-white">
                             ×{qty}

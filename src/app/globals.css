@@ -53,9 +53,12 @@ select {
 }
 
 .fluent-acrylic {
-  background: rgba(249, 249, 249, 0.85);
-  backdrop-filter: saturate(160%) blur(20px);
-  -webkit-backdrop-filter: saturate(160%) blur(20px);
+  background: #f3f3f3;
+  border-bottom: 1px solid #e6e6e6;
+}
+
+.fluent-surface {
+  background: #ffffff;
 }
 
 @keyframes sheet-up {

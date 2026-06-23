@@ -5,9 +5,13 @@ import { getUserDuplicates, getUserNeeds } from "@/lib/data";
 
 export default async function OnboardingPage() {
   const { supabase, user } = await requireUser();
+
+  const needsTableCheck = await supabase.from("user_needs").select("id").limit(1);
+  const needsTableMissing = !!needsTableCheck.error;
+
   const [duplicates, needs] = await Promise.all([
     getUserDuplicates(supabase, user.id),
-    getUserNeeds(supabase, user.id),
+    needsTableMissing ? Promise.resolve([]) : getUserNeeds(supabase, user.id),
   ]);
 
   const sections = buildGabaritoSections();
@@ -24,6 +28,15 @@ export default async function OnboardingPage() {
           Marque o que você tem repetido e o que falta. Tudo salva sozinho.
         </p>
       </div>
+
+      {needsTableMissing ? (
+        <div className="rounded-lg border border-[#ecdfc0] bg-[#fbf6ea] p-4 text-sm text-[#9a6700]">
+          A lista <strong>Preciso</strong> não pode ser salva ainda: falta criar a
+          tabela <code className="text-xs">user_needs</code> no Supabase. Rode o
+          arquivo <code className="text-xs">supabase/migrations/002_user_needs.sql</code>{" "}
+          no SQL Editor.
+        </div>
+      ) : null}
 
       <Gabarito
         sections={sections}

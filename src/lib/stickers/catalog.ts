@@ -68,7 +68,7 @@ export function buildGabaritoSections(): GabaritoSection[] {
   const sections: GabaritoSection[] = [];
 
   sections.push({
-    id: "ESP",
+    id: "FWC",
     kind: "special",
     title: "Especiais",
     flag: "⭐",
@@ -83,10 +83,11 @@ export function buildGabaritoSections(): GabaritoSection[] {
     const info = getTeamInfo(team);
     const cells: GabaritoCell[] = [];
     for (let i = 1; i <= 20; i++) {
+      const code = `${team}${String(i).padStart(2, "0")}`;
       cells.push({
-        code: `${team}${String(i).padStart(2, "0")}`,
+        code,
         number: i,
-        label: String(i).padStart(2, "0"),
+        label: code,
       });
     }
     sections.push({

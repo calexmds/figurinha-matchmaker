@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { signInWithGoogle } from "@/app/actions";
+import { CopaBadge } from "@/components/copa-badge";
 import { APP_NAME, APP_URL, TOTAL_STICKERS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 
@@ -21,13 +22,18 @@ export default async function LandingPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-5 py-8 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
-      <section className="rounded-2xl bg-gradient-to-br from-[#0067c0] to-[#004e93] p-8 text-white shadow-lg">
-        <p className="text-sm font-semibold uppercase tracking-[0.25em] text-white/80">
-          Copa do Mundo 2026
-        </p>
-        <h1 className="mt-4 text-4xl font-black leading-tight sm:text-5xl">
-          {APP_NAME}
-        </h1>
+      <section className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#0067c0] via-[#005aa8] to-[#0f7b0f] p-8 text-white shadow-lg">
+        <div className="flex items-start gap-4">
+          <CopaBadge size={64} className="shrink-0 rounded-full bg-white/95 p-1" />
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.25em] text-white/80">
+              Copa do Mundo 2026
+            </p>
+            <h1 className="mt-2 text-3xl font-black leading-tight sm:text-4xl">
+              {APP_NAME}
+            </h1>
+          </div>
+        </div>
         <p className="mt-4 max-w-xl text-base leading-7 text-white/90">
           Registre repetidas, entre no grupo da família ou amigos e descubra
           automaticamente as melhores trocas. Sem planilha, sem horas na mesa.

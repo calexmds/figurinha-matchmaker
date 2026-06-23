@@ -80,7 +80,7 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-[#e6e6e6] fluent-acrylic pb-[env(safe-area-inset-bottom)]"
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-[#e6e6e6] bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-2px_8px_rgba(0,0,0,0.06)]"
       aria-label="Navegação principal"
     >
       <div className="mx-auto grid max-w-lg grid-cols-4">

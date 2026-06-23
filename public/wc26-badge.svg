@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" role="img" aria-label="Copa do Mundo 2026">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0067c0"/>
+      <stop offset="50%" stop-color="#0f7b0f"/>
+      <stop offset="100%" stop-color="#c8102e"/>
+    </linearGradient>
+  </defs>
+  <circle cx="60" cy="60" r="56" fill="url(#g)" opacity="0.12"/>
+  <circle cx="60" cy="60" r="48" stroke="url(#g)" stroke-width="3" fill="#fff"/>
+  <!-- Trophy silhouette (generic, not FIFA trademark) -->
+  <path d="M42 38h36v8c0 14-6 22-18 26-12-4-18-12-18-26v-8z" fill="url(#g)"/>
+  <path d="M36 38h-6c0 8 4 14 10 16v-8c-4-2-6-5-6-8h2zm48 0h6c0 8-4 14-10 16v-8c4-2 6-5 6-8h-2z" fill="url(#g)" opacity="0.85"/>
+  <rect x="48" y="72" width="24" height="6" rx="2" fill="url(#g)"/>
+  <rect x="44" y="78" width="32" height="8" rx="2" fill="url(#g)" opacity="0.9"/>
+  <text x="60" y="98" text-anchor="middle" font-family="Segoe UI, system-ui, sans-serif" font-size="11" font-weight="700" fill="#1b1b1b">2026</text>
+</svg>
