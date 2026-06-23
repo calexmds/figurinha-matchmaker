@@ -4,6 +4,7 @@ import { InAppBrowserBanner } from "@/components/in-app-browser-banner";
 import { APP_NAME } from "@/lib/constants";
 import { normalizeInviteCode } from "@/lib/invite";
 import { createClient } from "@/lib/supabase/server";
+import { lookupGroupByInvite } from "@/lib/group-join";
 
 export default async function JoinPage({
   params,
@@ -17,11 +18,7 @@ export default async function JoinPage({
   const inviteCode = normalizeInviteCode(code);
   const supabase = await createClient();
 
-  const { data: group } = await supabase
-    .from("groups")
-    .select("id, name, invite_code")
-    .eq("invite_code", inviteCode)
-    .maybeSingle();
+  const groupData = await lookupGroupByInvite(supabase, inviteCode);
 
   const {
     data: { user },
@@ -29,7 +26,7 @@ export default async function JoinPage({
 
   const nextPath = `/join/${inviteCode}`;
 
-  if (!group) {
+  if (!groupData) {
     return (
       <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 py-12">
         <InAppBrowserBanner />
@@ -47,7 +44,7 @@ export default async function JoinPage({
     const { data: membership } = await supabase
       .from("group_members")
       .select("id")
-      .eq("group_id", group.id)
+      .eq("group_id", groupData.id)
       .eq("user_id", user.id)
       .maybeSingle();
 
@@ -69,10 +66,10 @@ export default async function JoinPage({
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#0067c0]">
           Convite
         </p>
-        <h1 className="mt-3 text-3xl font-bold text-[#1b1b1b]">{group.name}</h1>
+        <h1 className="mt-3 text-3xl font-bold text-[#1b1b1b]">{groupData.name}</h1>
         <p className="mt-3 text-sm leading-6 text-[#5f5f5f]">
           Você foi convidado para trocar figurinhas no {APP_NAME}. Entre e
-          marque repetidas e o que falta no gabarito.
+          marque o que você tem no gabarito (aba Tenho).
         </p>
 
         {query.error ? (
@@ -82,7 +79,7 @@ export default async function JoinPage({
         ) : null}
 
         <div className="mt-8">
-          <AuthPanel nextPath={nextPath} groupName={group.name} compact />
+          <AuthPanel nextPath={nextPath} groupName={groupData.name} compact />
         </div>
       </div>
     </main>

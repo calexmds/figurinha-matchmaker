@@ -6,7 +6,13 @@ import {
   userNeedsCode,
 } from "@/lib/stickers/collection";
 
-export type TradeStatus = "pending" | "completed" | "cancelled";
+export type TradeStatus =
+  | "proposed"
+  | "active"
+  | "completed"
+  | "cancelled";
+
+export type TradeRole = "initiator" | "partner";
 
 export type PendingTrade = {
   id: string;
@@ -16,6 +22,8 @@ export type PendingTrade = {
   partnerName: string;
   give: string[];
   receive: string[];
+  status: "proposed" | "active";
+  role: TradeRole;
   createdAt: string;
 };
 
@@ -24,11 +32,141 @@ export type TradeReservations = {
   receive: Set<string>;
 };
 
+const OPEN_STATUSES = ["proposed", "active"] as const;
+
 function extractCode(
   sticker: { code: string } | { code: string }[] | null,
 ): string | null {
   if (!sticker) return null;
   return Array.isArray(sticker) ? (sticker[0]?.code ?? null) : sticker.code;
+}
+
+function revalidateTradePaths() {
+  revalidatePath("/trocas");
+  revalidatePath("/home");
+  revalidatePath("/onboarding");
+}
+
+async function fetchOwnedMap(supabase: SupabaseClient, userId: string) {
+  const { data: ownedRows } = await supabase
+    .from("user_stickers")
+    .select("quantity, stickers(code)")
+    .eq("user_id", userId)
+    .gt("quantity", 0);
+
+  return ownedMapFromList(
+    (ownedRows ?? [])
+      .map((row) => ({
+        code:
+          extractCode(
+            row.stickers as { code: string } | { code: string }[] | null,
+          ) ?? "",
+        quantity: row.quantity,
+      }))
+      .filter((r) => r.code),
+  );
+}
+
+async function validateUserTradeInventory(
+  supabase: SupabaseClient,
+  userId: string,
+  giveCodes: string[],
+  receiveCodes: string[],
+  reservations: TradeReservations,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const ownedMap = await fetchOwnedMap(supabase, userId);
+
+  const giveCount = new Map<string, number>();
+  for (const code of giveCodes) {
+    const upper = code.toUpperCase();
+    giveCount.set(upper, (giveCount.get(upper) ?? 0) + 1);
+  }
+  for (const [code, needed] of giveCount) {
+    const total = ownedMap[code] ?? 0;
+    const reserved = reservations.give.get(code) ?? 0;
+    if (tradeableQuantity(total, reserved) < needed) {
+      return {
+        ok: false,
+        error: `Não há repetida disponível para ${code}.`,
+      };
+    }
+  }
+
+  for (const code of receiveCodes) {
+    const upper = code.toUpperCase();
+    if (!userNeedsCode(ownedMap, upper)) {
+      return {
+        ok: false,
+        error: `${code} não está na lista de preciso.`,
+      };
+    }
+    if (reservations.receive.has(upper)) {
+      return {
+        ok: false,
+        error: `${code} já está reservada em outra troca.`,
+      };
+    }
+  }
+
+  return { ok: true };
+}
+
+function accumulateItems(
+  items: Array<{
+    trade_id: string;
+    side: string;
+    stickers: { code: string } | { code: string }[] | null;
+  }>,
+) {
+  const itemsByTrade = new Map<string, { give: string[]; receive: string[] }>();
+  for (const item of items) {
+    if (!itemsByTrade.has(item.trade_id)) {
+      itemsByTrade.set(item.trade_id, { give: [], receive: [] });
+    }
+    const bucket = itemsByTrade.get(item.trade_id)!;
+    const code = extractCode(item.stickers);
+    if (!code) continue;
+    if (item.side === "give") bucket.give.push(code);
+    else bucket.receive.push(code);
+  }
+  return itemsByTrade;
+}
+
+function mapTradeRow(
+  trade: {
+    id: string;
+    user_id: string;
+    partner_id: string;
+    group_id: string;
+    status: string;
+    created_at: string;
+    groups?: { name: string } | { name: string }[] | null;
+  },
+  items: { give: string[]; receive: string[] },
+  userId: string,
+  nameById: Map<string, string>,
+): PendingTrade | null {
+  if (trade.status !== "proposed" && trade.status !== "active") return null;
+
+  const isInitiator = trade.user_id === userId;
+  const partnerId = isInitiator ? trade.partner_id : trade.user_id;
+  const g = trade.groups;
+  const groupName = Array.isArray(g)
+    ? (g[0]?.name ?? "Grupo")
+    : (g?.name ?? "Grupo");
+
+  return {
+    id: trade.id,
+    groupId: trade.group_id,
+    groupName,
+    partnerId,
+    partnerName: nameById.get(partnerId) ?? "Colecionador",
+    give: (isInitiator ? items.give : items.receive).sort(),
+    receive: (isInitiator ? items.receive : items.give).sort(),
+    status: trade.status as "proposed" | "active",
+    role: isInitiator ? "initiator" : "partner",
+    createdAt: trade.created_at,
+  };
 }
 
 export async function getUserReservations(
@@ -37,9 +175,9 @@ export async function getUserReservations(
 ): Promise<TradeReservations> {
   const { data: trades } = await supabase
     .from("trades")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("status", "pending");
+    .select("id, user_id, partner_id, status")
+    .in("status", [...OPEN_STATUSES])
+    .or(`user_id.eq.${userId},partner_id.eq.${userId}`);
 
   const give = new Map<string, number>();
   const receive = new Set<string>();
@@ -49,15 +187,38 @@ export async function getUserReservations(
   const tradeIds = trades.map((t) => t.id);
   const { data: items } = await supabase
     .from("trade_items")
-    .select("side, quantity, stickers(code)")
+    .select("trade_id, side, quantity, stickers(code)")
     .in("trade_id", tradeIds);
 
+  const roleByTrade = new Map(
+    trades.map((t) => [
+      t.id,
+      {
+        isInitiator: t.user_id === userId,
+        status: t.status as string,
+      },
+    ]),
+  );
+
   for (const item of items ?? []) {
+    const meta = roleByTrade.get(item.trade_id);
+    if (!meta) continue;
+
+    const countsForUser =
+      meta.status === "active" ||
+      (meta.status === "proposed" && meta.isInitiator);
+
+    if (!countsForUser) continue;
+
     const code = extractCode(
       item.stickers as { code: string } | { code: string }[] | null,
     );
     if (!code) continue;
-    if (item.side === "give") {
+
+    const side =
+      meta.isInitiator === (item.side === "give") ? "give" : "receive";
+
+    if (side === "give") {
       give.set(code, (give.get(code) ?? 0) + item.quantity);
     } else {
       receive.add(code);
@@ -85,85 +246,31 @@ export function applyReservationsToLists(
   return { availableDuplicates, availableNeeds };
 }
 
-export async function getPendingTrades(
-  supabase: SupabaseClient,
-  userId: string,
-  groupId: string,
-): Promise<PendingTrade[]> {
-  const { data: trades } = await supabase
-    .from("trades")
-    .select("id, partner_id, created_at")
-    .eq("user_id", userId)
-    .eq("group_id", groupId)
-    .eq("status", "pending")
-    .order("created_at", { ascending: false });
-
-  if (!trades?.length) return [];
-
-  const partnerIds = [...new Set(trades.map((t) => t.partner_id))];
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, name")
-    .in("id", partnerIds);
-
-  const nameById = new Map(
-    (profiles ?? []).map((p) => [p.id, p.name ?? "Colecionador"]),
-  );
-
-  const tradeIds = trades.map((t) => t.id);
-  const { data: items } = await supabase
-    .from("trade_items")
-    .select("trade_id, side, stickers(code)")
-    .in("trade_id", tradeIds);
-
-  const itemsByTrade = new Map<string, { give: string[]; receive: string[] }>();
-  for (const id of tradeIds) {
-    itemsByTrade.set(id, { give: [], receive: [] });
-  }
-
-  for (const item of items ?? []) {
-    const bucket = itemsByTrade.get(item.trade_id);
-    const code = extractCode(
-      item.stickers as { code: string } | { code: string }[] | null,
-    );
-    if (!bucket || !code) continue;
-    if (item.side === "give") bucket.give.push(code);
-    else bucket.receive.push(code);
-  }
-
-  return trades.map((trade) => {
-    const bucket = itemsByTrade.get(trade.id) ?? { give: [], receive: [] };
-    return {
-      id: trade.id,
-      groupId: groupId,
-      groupName: "",
-      partnerId: trade.partner_id,
-      partnerName: nameById.get(trade.partner_id) ?? "Colecionador",
-      give: bucket.give.sort(),
-      receive: bucket.receive.sort(),
-      createdAt: trade.created_at,
-    };
-  });
-}
-
 export async function getAllPendingTrades(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<PendingTrade[]> {
   const { data: trades } = await supabase
     .from("trades")
-    .select("id, partner_id, group_id, created_at, groups(name)")
-    .eq("user_id", userId)
-    .eq("status", "pending")
+    .select(
+      "id, user_id, partner_id, group_id, status, created_at, groups(name)",
+    )
+    .in("status", [...OPEN_STATUSES])
+    .or(`user_id.eq.${userId},partner_id.eq.${userId}`)
     .order("created_at", { ascending: false });
 
   if (!trades?.length) return [];
 
-  const partnerIds = [...new Set(trades.map((t) => t.partner_id))];
+  const profileIds = new Set<string>();
+  for (const t of trades) {
+    profileIds.add(t.user_id);
+    profileIds.add(t.partner_id);
+  }
+
   const { data: profiles } = await supabase
     .from("profiles")
     .select("id, name")
-    .in("id", partnerIds);
+    .in("id", [...profileIds]);
 
   const nameById = new Map(
     (profiles ?? []).map((p) => [p.id, p.name ?? "Colecionador"]),
@@ -175,36 +282,18 @@ export async function getAllPendingTrades(
     .select("trade_id, side, stickers(code)")
     .in("trade_id", tradeIds);
 
-  const itemsByTrade = new Map<string, { give: string[]; receive: string[] }>();
-  for (const id of tradeIds) {
-    itemsByTrade.set(id, { give: [], receive: [] });
-  }
+  const itemsByTrade = accumulateItems(items ?? []);
 
-  for (const item of items ?? []) {
-    const bucket = itemsByTrade.get(item.trade_id);
-    const code = extractCode(
-      item.stickers as { code: string } | { code: string }[] | null,
-    );
-    if (!bucket || !code) continue;
-    if (item.side === "give") bucket.give.push(code);
-    else bucket.receive.push(code);
-  }
-
-  return trades.map((trade) => {
-    const g = trade.groups as { name: string } | { name: string }[] | null;
-    const groupName = Array.isArray(g) ? (g[0]?.name ?? "Grupo") : (g?.name ?? "Grupo");
-    const bucket = itemsByTrade.get(trade.id) ?? { give: [], receive: [] };
-    return {
-      id: trade.id,
-      groupId: trade.group_id,
-      groupName,
-      partnerId: trade.partner_id,
-      partnerName: nameById.get(trade.partner_id) ?? "Colecionador",
-      give: bucket.give.sort(),
-      receive: bucket.receive.sort(),
-      createdAt: trade.created_at,
-    };
-  });
+  return trades
+    .map((trade) =>
+      mapTradeRow(
+        trade,
+        itemsByTrade.get(trade.id) ?? { give: [], receive: [] },
+        userId,
+        nameById,
+      ),
+    )
+    .filter((t): t is PendingTrade => !!t);
 }
 
 async function resolveStickerIds(
@@ -217,6 +306,84 @@ async function resolveStickerIds(
     .select("id, code")
     .in("code", codes);
   return new Map((data ?? []).map((row) => [row.code, row.id]));
+}
+
+async function applyCollectionChanges(
+  supabase: SupabaseClient,
+  userId: string,
+  giveCodes: string[],
+  receiveCodes: string[],
+) {
+  const giveCount = new Map<string, number>();
+  for (const code of giveCodes) {
+    const upper = code.toUpperCase();
+    giveCount.set(upper, (giveCount.get(upper) ?? 0) + 1);
+  }
+
+  const allCodes = [...new Set([...giveCodes, ...receiveCodes])].map((c) =>
+    c.toUpperCase(),
+  );
+  const codeToId = await resolveStickerIds(supabase, allCodes);
+
+  for (const [code, qty] of giveCount) {
+    const stickerId = codeToId.get(code);
+    if (!stickerId) continue;
+
+    const { data: row } = await supabase
+      .from("user_stickers")
+      .select("quantity")
+      .eq("user_id", userId)
+      .eq("sticker_id", stickerId)
+      .maybeSingle();
+
+    const nextQty = Math.max(0, (row?.quantity ?? 0) - qty);
+    if (nextQty === 0) {
+      await supabase
+        .from("user_stickers")
+        .delete()
+        .eq("user_id", userId)
+        .eq("sticker_id", stickerId);
+    } else {
+      await supabase
+        .from("user_stickers")
+        .update({
+          quantity: nextQty,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", userId)
+        .eq("sticker_id", stickerId);
+    }
+  }
+
+  for (const code of receiveCodes) {
+    const upper = code.toUpperCase();
+    const stickerId = codeToId.get(upper);
+    if (!stickerId) continue;
+
+    const { data: row } = await supabase
+      .from("user_stickers")
+      .select("quantity")
+      .eq("user_id", userId)
+      .eq("sticker_id", stickerId)
+      .maybeSingle();
+
+    const nextQty = (row?.quantity ?? 0) + 1;
+    await supabase.from("user_stickers").upsert(
+      {
+        user_id: userId,
+        sticker_id: stickerId,
+        quantity: nextQty,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,sticker_id" },
+    );
+
+    await supabase
+      .from("user_needs")
+      .delete()
+      .eq("user_id", userId)
+      .eq("sticker_id", stickerId);
+  }
 }
 
 export async function createPendingTrade(
@@ -256,67 +423,47 @@ export async function createPendingTrade(
     return { ok: false, error: "Esta pessoa não está no grupo." };
   }
 
-  const { data: existingPending } = await supabase
+  const { data: existingOpen } = await supabase
     .from("trades")
     .select("id")
-    .eq("user_id", userId)
-    .eq("partner_id", partnerId)
-    .eq("status", "pending")
+    .eq("group_id", groupId)
+    .in("status", [...OPEN_STATUSES])
+    .or(
+      `and(user_id.eq.${userId},partner_id.eq.${partnerId}),and(user_id.eq.${partnerId},partner_id.eq.${userId})`,
+    )
     .maybeSingle();
 
-  if (existingPending) {
+  if (existingOpen) {
     return {
       ok: false,
-      error: "Já existe uma troca combinada com esta pessoa. Conclua ou cancele antes.",
+      error:
+        "Já existe uma troca aberta com esta pessoa neste grupo. Conclua ou cancele antes.",
     };
   }
 
   const reservations = await getUserReservations(supabase, userId);
-  const { data: ownedRows } = await supabase
-    .from("user_stickers")
-    .select("quantity, stickers(code)")
-    .eq("user_id", userId)
-    .gt("quantity", 0);
-
-  const ownedMap = ownedMapFromList(
-    (ownedRows ?? []).map((row) => ({
-      code:
-        extractCode(
-          row.stickers as { code: string } | { code: string }[] | null,
-        ) ?? "",
-      quantity: row.quantity,
-    })).filter((r) => r.code),
+  const selfCheck = await validateUserTradeInventory(
+    supabase,
+    userId,
+    giveCodes,
+    receiveCodes,
+    reservations,
   );
+  if (!selfCheck.ok) return selfCheck;
 
-  const giveCount = new Map<string, number>();
-  for (const code of giveCodes) {
-    giveCount.set(code, (giveCount.get(code) ?? 0) + 1);
-  }
-  for (const [code, needed] of giveCount) {
-    const total = ownedMap[code.toUpperCase()] ?? 0;
-    const reserved = reservations.give.get(code) ?? 0;
-    if (tradeableQuantity(total, reserved) < needed) {
-      return {
-        ok: false,
-        error: `Você não tem repetida disponível para ${code}.`,
-      };
-    }
-  }
-
-  for (const code of receiveCodes) {
-    const upper = code.toUpperCase();
-    if (!userNeedsCode(ownedMap, upper)) {
-      return {
-        ok: false,
-        error: `${code} não está na sua lista de preciso.`,
-      };
-    }
-    if (reservations.receive.has(upper)) {
-      return {
-        ok: false,
-        error: `${code} já está reservada em outra troca.`,
-      };
-    }
+  const partnerReservations = await getUserReservations(supabase, partnerId);
+  const partnerCheck = await validateUserTradeInventory(
+    supabase,
+    partnerId,
+    receiveCodes,
+    giveCodes,
+    partnerReservations,
+  );
+  if (!partnerCheck.ok) {
+    return {
+      ok: false,
+      error: `O parceiro não pode fazer esta troca agora (${partnerCheck.error.toLowerCase()}).`,
+    };
   }
 
   const allCodes = [...new Set([...giveCodes, ...receiveCodes])];
@@ -334,7 +481,7 @@ export async function createPendingTrade(
       group_id: groupId,
       user_id: userId,
       partner_id: partnerId,
-      status: "pending",
+      status: "proposed",
     })
     .select("id")
     .single();
@@ -371,7 +518,66 @@ export async function createPendingTrade(
   return { ok: true, tradeId: trade.id };
 }
 
-export async function completePendingTrade(
+export async function acceptTrade(
+  supabase: SupabaseClient,
+  userId: string,
+  tradeId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { data: trade } = await supabase
+    .from("trades")
+    .select("id, status, user_id, partner_id")
+    .eq("id", tradeId)
+    .eq("partner_id", userId)
+    .maybeSingle();
+
+  if (!trade) return { ok: false, error: "Proposta não encontrada." };
+  if (trade.status !== "proposed") {
+    return { ok: false, error: "Esta proposta já foi respondida." };
+  }
+
+  const { data: items } = await supabase
+    .from("trade_items")
+    .select("side, stickers(code)")
+    .eq("trade_id", tradeId);
+
+  const give: string[] = [];
+  const receive: string[] = [];
+  for (const item of items ?? []) {
+    const code = extractCode(
+      item.stickers as { code: string } | { code: string }[] | null,
+    );
+    if (!code) continue;
+    if (item.side === "give") give.push(code);
+    else receive.push(code);
+  }
+
+  const partnerReservations = await getUserReservations(supabase, userId);
+  const check = await validateUserTradeInventory(
+    supabase,
+    userId,
+    receive,
+    give,
+    partnerReservations,
+  );
+  if (!check.ok) {
+    return {
+      ok: false,
+      error: `Não dá para aceitar: ${check.error.toLowerCase()}`,
+    };
+  }
+
+  const { error } = await supabase
+    .from("trades")
+    .update({ status: "active" })
+    .eq("id", tradeId);
+
+  if (error) return { ok: false, error: "Não foi possível aceitar a troca." };
+
+  revalidateTradePaths();
+  return { ok: true };
+}
+
+export async function rejectTrade(
   supabase: SupabaseClient,
   userId: string,
   tradeId: string,
@@ -380,80 +586,73 @@ export async function completePendingTrade(
     .from("trades")
     .select("id, status")
     .eq("id", tradeId)
-    .eq("user_id", userId)
+    .eq("partner_id", userId)
+    .maybeSingle();
+
+  if (!trade) return { ok: false, error: "Proposta não encontrada." };
+  if (trade.status !== "proposed") {
+    return { ok: false, error: "Esta proposta já foi respondida." };
+  }
+
+  const { error } = await supabase
+    .from("trades")
+    .update({ status: "cancelled" })
+    .eq("id", tradeId);
+
+  if (error) return { ok: false, error: "Não foi possível recusar." };
+
+  revalidateTradePaths();
+  return { ok: true };
+}
+
+export async function completePendingTrade(
+  supabase: SupabaseClient,
+  userId: string,
+  tradeId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { data: trade } = await supabase
+    .from("trades")
+    .select("id, status, user_id, partner_id")
+    .eq("id", tradeId)
+    .or(`user_id.eq.${userId},partner_id.eq.${userId}`)
     .maybeSingle();
 
   if (!trade) return { ok: false, error: "Troca não encontrada." };
-  if (trade.status !== "pending") {
-    return { ok: false, error: "Esta troca já foi finalizada." };
+  if (trade.status !== "active") {
+    return {
+      ok: false,
+      error: "Só dá para confirmar trocas aceitas pelos dois lados.",
+    };
   }
 
   const { data: items } = await supabase
     .from("trade_items")
-    .select("side, quantity, sticker_id, stickers(code)")
+    .select("side, stickers(code)")
     .eq("trade_id", tradeId);
 
-  if (!items?.length) {
-    return { ok: false, error: "Troca sem figurinhas." };
-  }
-
-  for (const item of items) {
+  const initiatorGive: string[] = [];
+  const initiatorReceive: string[] = [];
+  for (const item of items ?? []) {
     const code = extractCode(
       item.stickers as { code: string } | { code: string }[] | null,
     );
     if (!code) continue;
-
-    if (item.side === "give") {
-      const { data: row } = await supabase
-        .from("user_stickers")
-        .select("quantity")
-        .eq("user_id", userId)
-        .eq("sticker_id", item.sticker_id)
-        .maybeSingle();
-
-      const nextQty = Math.max(0, (row?.quantity ?? 0) - item.quantity);
-      if (nextQty === 0) {
-        await supabase
-          .from("user_stickers")
-          .delete()
-          .eq("user_id", userId)
-          .eq("sticker_id", item.sticker_id);
-      } else {
-        await supabase
-          .from("user_stickers")
-          .update({
-            quantity: nextQty,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("user_id", userId)
-          .eq("sticker_id", item.sticker_id);
-      }
-    } else {
-      const { data: row } = await supabase
-        .from("user_stickers")
-        .select("quantity")
-        .eq("user_id", userId)
-        .eq("sticker_id", item.sticker_id)
-        .maybeSingle();
-
-      const nextQty = (row?.quantity ?? 0) + item.quantity;
-      await supabase.from("user_stickers").upsert(
-        {
-          user_id: userId,
-          sticker_id: item.sticker_id,
-          quantity: nextQty,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id,sticker_id" },
-      );
-
-      await supabase
-        .from("user_needs")
-        .delete()
-        .eq("user_id", userId)
-        .eq("sticker_id", item.sticker_id);
-    }
+    if (item.side === "give") initiatorGive.push(code);
+    else initiatorReceive.push(code);
   }
+
+  await applyCollectionChanges(
+    supabase,
+    trade.user_id,
+    initiatorGive,
+    initiatorReceive,
+  );
+  await applyCollectionChanges(
+    supabase,
+    trade.partner_id,
+    initiatorReceive,
+    initiatorGive,
+  );
 
   const { error } = await supabase
     .from("trades")
@@ -476,14 +675,20 @@ export async function cancelPendingTrade(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const { data: trade } = await supabase
     .from("trades")
-    .select("id, status")
+    .select("id, status, user_id, partner_id")
     .eq("id", tradeId)
-    .eq("user_id", userId)
+    .or(`user_id.eq.${userId},partner_id.eq.${userId}`)
     .maybeSingle();
 
   if (!trade) return { ok: false, error: "Troca não encontrada." };
-  if (trade.status !== "pending") {
-    return { ok: false, error: "Só dá para cancelar trocas pendentes." };
+  if (trade.status !== "proposed" && trade.status !== "active") {
+    return { ok: false, error: "Esta troca já foi finalizada." };
+  }
+  if (trade.status === "proposed" && trade.user_id !== userId) {
+    return {
+      ok: false,
+      error: "Use Recusar para propostas que você recebeu.",
+    };
   }
 
   const { error } = await supabase
@@ -495,10 +700,4 @@ export async function cancelPendingTrade(
 
   revalidateTradePaths();
   return { ok: true };
-}
-
-function revalidateTradePaths() {
-  revalidatePath("/trocas");
-  revalidatePath("/home");
-  revalidatePath("/onboarding");
 }

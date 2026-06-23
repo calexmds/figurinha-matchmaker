@@ -5,11 +5,22 @@ import { PendingTradeCard } from "@/components/pending-trade-card";
 import { getUserTradeSummary } from "@/lib/data";
 import { computeAllGroupMatches } from "@/lib/multi-group-trades";
 import { getUserGroupsWithMembers } from "@/lib/groups";
+import {
+  getCachedGroupTradeData,
+  summarizeTradeDiagnostics,
+} from "@/lib/group-trade-data";
 
 export default async function TradesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; combined?: string; completed?: string; cancelled?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    proposed?: string;
+    accepted?: string;
+    rejected?: string;
+    completed?: string;
+    cancelled?: string;
+  }>;
 }) {
   const query = await searchParams;
   const { supabase, user } = await requireUser();
@@ -49,14 +60,13 @@ export default async function TradesPage({
       <div className="fluent-card p-6">
         <h2 className="text-xl font-bold text-[#1b1b1b]">Trocas</h2>
         <p className="mt-2 text-sm text-[#5f5f5f]">
-          Cadastre suas repetidas e o que precisa para calcular as melhores
-          trocas.
+          Marque o que você tem na aba Tenho para calcular as melhores trocas.
         </p>
         <Link
           href="/onboarding"
           className="mt-4 inline-flex min-h-11 items-center rounded-md bg-[#0067c0] px-4 py-3 text-sm font-semibold text-white active:bg-[#005aa8]"
         >
-          Cadastrar listas
+          Abrir figurinhas
         </Link>
       </div>
     );
@@ -64,13 +74,33 @@ export default async function TradesPage({
 
   const feedback =
     query.error ??
-    (query.combined ? "Troca combinada! Figurinhas reservadas no gabarito." : null) ??
-    (query.completed ? "Troca concluída! Listas atualizadas." : null) ??
-    (query.cancelled ? "Combinação cancelada." : null);
+    (query.proposed
+      ? "Proposta enviada! Aguardando o parceiro aceitar."
+      : null) ??
+    (query.accepted
+      ? "Troca aceita! Figurinhas reservadas para os dois."
+      : null) ??
+    (query.rejected ? "Proposta recusada." : null) ??
+    (query.completed
+      ? "Troca concluída! Coleções dos dois atualizadas."
+      : null) ??
+    (query.cancelled ? "Troca cancelada." : null);
 
   const feedbackIsError = !!query.error;
 
   const groupNames = groups.map((g) => g.name).join(", ");
+
+  let diagnostics: { title: string; detail: string } | null = null;
+  if (matches.length === 0 && groups.length > 0) {
+    const tradeData = await getCachedGroupTradeData(
+      supabase,
+      groups[0].id,
+      user.id,
+    );
+    if (tradeData) {
+      diagnostics = summarizeTradeDiagnostics(tradeData, matches.length);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -90,8 +120,7 @@ export default async function TradesPage({
           {totalMembers > 0 ? (
             <> · {totalMembers} colecionadores no radar</>
           ) : null}
-          {" "}— combine, encontre pessoalmente e confirme quando a troca física
-          acontecer.
+          {" "}— proponha, aceite, encontre pessoalmente e confirme a troca.
         </p>
       </div>
 
@@ -110,7 +139,7 @@ export default async function TradesPage({
       {pendingTrades.length > 0 ? (
         <section className="space-y-4">
           <h3 className="text-base font-bold text-[#1b1b1b]">
-            Trocas combinadas ({pendingTrades.length})
+            Trocas abertas ({pendingTrades.length})
           </h3>
           {pendingTrades.map((trade) => (
             <PendingTradeCard key={trade.id} trade={trade} />
@@ -123,13 +152,21 @@ export default async function TradesPage({
 
         {matches.length === 0 ? (
           <div className="fluent-card space-y-3 p-6 text-sm text-[#5f5f5f]">
-            <p className="font-semibold text-[#1b1b1b]">
-              Nenhuma troca direta encontrada ainda
-            </p>
-            <p className="leading-6">
-              Convide mais pessoas aos seus grupos ou atualize suas listas de
-              repetidas e preciso.
-            </p>
+            {diagnostics ? (
+              <>
+                <p className="font-semibold text-[#1b1b1b]">{diagnostics.title}</p>
+                <p className="leading-6">{diagnostics.detail}</p>
+              </>
+            ) : (
+              <>
+                <p className="font-semibold text-[#1b1b1b]">
+                  Nenhuma troca direta encontrada ainda
+                </p>
+                <p className="leading-6">
+                  Convide mais pessoas ou marque mais figurinhas em Tenho.
+                </p>
+              </>
+            )}
             <Link
               href="/grupo"
               className="inline-flex min-h-10 items-center text-sm font-semibold text-[#0067c0] underline"

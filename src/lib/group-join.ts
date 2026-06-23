@@ -28,6 +28,32 @@ export async function ensureProfile(
   );
 }
 
+export async function lookupGroupByInvite(
+  supabase: SupabaseClient,
+  inviteCodeRaw: string,
+): Promise<{ id: string; name: string; invite_code: string } | null> {
+  const code = normalizeInviteCode(inviteCodeRaw);
+  const { data, error } = await supabase.rpc("get_group_by_invite", {
+    p_invite_code: code,
+  });
+
+  if (error || !data) return null;
+
+  const row = data as {
+    id?: string;
+    name?: string;
+    invite_code?: string;
+  } | null;
+
+  if (!row?.id) return null;
+
+  return {
+    id: row.id,
+    name: row.name ?? "Grupo",
+    invite_code: row.invite_code ?? code,
+  };
+}
+
 export async function joinGroupForUser(
   supabase: SupabaseClient,
   user: User,
@@ -36,56 +62,31 @@ export async function joinGroupForUser(
   await ensureProfile(supabase, user);
 
   const code = normalizeInviteCode(inviteCodeRaw);
-  const { data: group, error: groupError } = await supabase
-    .from("groups")
-    .select("id, name")
-    .eq("invite_code", code)
-    .maybeSingle();
 
-  if (groupError) {
+  const { data, error } = await supabase.rpc("join_group_by_invite", {
+    p_invite_code: code,
+  });
+
+  if (error) {
     return {
       ok: false,
-      error: "Erro ao buscar o grupo.",
-      detail: groupError.message,
+      error: "Erro ao entrar no grupo.",
+      detail: error.message,
     };
   }
-  if (!group) {
-    return { ok: false, error: "Grupo não encontrado. Verifique o convite." };
-  }
 
-  const { data: existing } = await supabase
-    .from("group_members")
-    .select("id")
-    .eq("group_id", group.id)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const payload = data as {
+    ok?: boolean;
+    error?: string;
+    id?: string;
+    name?: string;
+  } | null;
 
-  if (!existing) {
-    const { error: memberError } = await supabase.from("group_members").upsert(
-      { group_id: group.id, user_id: user.id },
-      { onConflict: "group_id,user_id" },
-    );
-
-    if (memberError) {
-      return {
-        ok: false,
-        error: "Não foi possível entrar no grupo.",
-        detail: memberError.message,
-      };
+  if (!payload?.ok || !payload.id) {
+    if (payload?.error === "not_found") {
+      return { ok: false, error: "Grupo não encontrado. Verifique o convite." };
     }
-  }
-
-  const { error: profileError } = await supabase
-    .from("profiles")
-    .update({ active_group_id: group.id })
-    .eq("id", user.id);
-
-  if (profileError) {
-    return {
-      ok: false,
-      error: "Entrou no grupo, mas não foi possível ativar o grupo.",
-      detail: profileError.message,
-    };
+    return { ok: false, error: "Não foi possível entrar no grupo." };
   }
 
   revalidatePath("/home");
@@ -95,8 +96,7 @@ export async function joinGroupForUser(
 
   return {
     ok: true,
-    groupId: group.id,
-    groupName: group.name,
-    alreadyMember: !!existing,
+    groupId: payload.id,
+    groupName: payload.name ?? "Grupo",
   };
 }

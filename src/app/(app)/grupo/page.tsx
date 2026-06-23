@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createGroup, signOut } from "@/app/actions";
+import { createGroup, joinGroupWithCode, signOut } from "@/app/actions";
 import { requireUser } from "@/lib/auth";
 import { GroupCard } from "@/components/group-card";
 import { getUserGroupsWithMembers } from "@/lib/groups";
@@ -50,6 +50,27 @@ export default async function GroupPage({
           className="w-full rounded-md bg-[#0067c0] px-4 py-3 text-sm font-semibold text-white transition active:bg-[#005aa8]"
         >
           Criar grupo
+        </button>
+      </form>
+
+      <form action={joinGroupWithCode} className="fluent-card space-y-4 p-5">
+        <h2 className="text-lg font-semibold text-[#1b1b1b]">
+          Entrar com código
+        </h2>
+        <p className="text-sm text-[#5f5f5f]">
+          Cole o código do convite (ex.: COPA-AB12) recebido no WhatsApp.
+        </p>
+        <input
+          name="inviteCode"
+          placeholder="COPA-XXXX"
+          className="w-full rounded-md border border-[#d0d0d0] bg-white px-4 py-3 text-sm uppercase text-[#1b1b1b] placeholder:normal-case placeholder:text-[#9a9a9a] focus:border-[#0067c0] focus:outline-none"
+          required
+        />
+        <button
+          type="submit"
+          className="w-full rounded-md border border-[#0067c0] bg-white px-4 py-3 text-sm font-semibold text-[#0067c0] transition active:bg-[#eaf3fb]"
+        >
+          Entrar no grupo
         </button>
       </form>
 

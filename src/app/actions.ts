@@ -12,9 +12,11 @@ import {
 } from "@/lib/invite-cookie";
 import { generateInviteCode, normalizeInviteCode } from "@/lib/invite";
 import {
+  acceptTrade,
   cancelPendingTrade,
   completePendingTrade,
   createPendingTrade,
+  rejectTrade,
 } from "@/lib/trades";
 import {
   parseNeedsInput,
@@ -467,7 +469,64 @@ export async function combineTrade(formData: FormData) {
     redirect(`/trocas?error=${encodeURIComponent(result.error)}`);
   }
 
-  redirect("/trocas?combined=1");
+  redirect("/trocas?proposed=1");
+}
+
+export async function acceptTradeAction(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const tradeId = String(formData.get("tradeId") ?? "");
+  const result = await acceptTrade(supabase, user.id, tradeId);
+
+  if (!result.ok) {
+    redirect(`/trocas?error=${encodeURIComponent(result.error)}`);
+  }
+
+  redirect("/trocas?accepted=1");
+}
+
+export async function rejectTradeAction(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const tradeId = String(formData.get("tradeId") ?? "");
+  const result = await rejectTrade(supabase, user.id, tradeId);
+
+  if (!result.ok) {
+    redirect(`/trocas?error=${encodeURIComponent(result.error)}`);
+  }
+
+  redirect("/trocas?rejected=1");
+}
+
+export async function joinGroupWithCode(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const inviteCode = String(formData.get("inviteCode") ?? "").trim();
+  if (!inviteCode) {
+    redirect("/grupo?error=" + encodeURIComponent("Informe o código do grupo."));
+  }
+
+  const result = await joinGroupForUser(supabase, user, inviteCode);
+  if (!result.ok) {
+    redirect(`/grupo?error=${encodeURIComponent(result.error)}`);
+  }
+
+  redirect("/onboarding");
 }
 
 export async function completeTrade(formData: FormData) {

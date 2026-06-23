@@ -28,6 +28,7 @@ export default async function OnboardingPage() {
         sections={sections}
         initialOwned={owned}
         initialReservedGive={[...reservations.give.keys()]}
+        initialReservedGiveCounts={Object.fromEntries(reservations.give)}
         initialReservedReceive={[...reservations.receive]}
       />
     </div>

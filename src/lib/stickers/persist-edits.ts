@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
+import { getUserReservations } from "@/lib/trades";
+import { tradeableQuantity } from "@/lib/stickers/collection";
 
 export type StickerEdit = {
   code: string;
@@ -41,6 +43,22 @@ export async function persistStickerEdits(
   }
 
   const codeToId = new Map(stickerRows.map((row) => [row.code, row.id]));
+  const reservations = await getUserReservations(supabase, userId);
+
+  for (const edit of normalized) {
+    if (reservations.receive.has(edit.code) && edit.quantity > 0) {
+      return {
+        error: `${edit.code} está reservada para receber em uma troca. Cancele ou conclua antes de marcar como Tenho.`,
+      };
+    }
+    const reservedGive = reservations.give.get(edit.code) ?? 0;
+    if (reservedGive > 0 && tradeableQuantity(edit.quantity) < reservedGive) {
+      return {
+        error: `${edit.code} tem ${reservedGive} repetida(s) reservada(s) em troca. Ajuste a quantidade ou cancele a combinação.`,
+      };
+    }
+  }
+
   const now = new Date().toISOString();
 
   const upserts: Array<{

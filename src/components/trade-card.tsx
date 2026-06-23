@@ -129,8 +129,7 @@ export function TradeCard({
         <div className="mt-4 flex flex-col gap-2">
           {hasPendingWithPartner ? (
             <p className="rounded-md border border-[#ecdfc0] bg-[#fffbf0] px-4 py-3 text-sm text-[#9a6700]">
-              Já existe uma troca combinada com {match.name.split(" ")[0]}.
-              Conclua ou cancele antes de combinar outra.
+              Já existe uma proposta ou troca aberta com {match.name.split(" ")[0]} neste grupo.
             </p>
           ) : (
             <form action={combineTrade}>

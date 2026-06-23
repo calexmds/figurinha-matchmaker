@@ -1,4 +1,9 @@
-import { cancelTrade, completeTrade } from "@/app/actions";
+import {
+  acceptTradeAction,
+  cancelTrade,
+  completeTrade,
+  rejectTradeAction,
+} from "@/app/actions";
 import type { PendingTrade } from "@/lib/trades";
 
 type PendingTradeCardProps = {
@@ -6,13 +11,33 @@ type PendingTradeCardProps = {
 };
 
 export function PendingTradeCard({ trade }: PendingTradeCardProps) {
+  const isIncomingProposal =
+    trade.status === "proposed" && trade.role === "partner";
+  const isWaitingAcceptance =
+    trade.status === "proposed" && trade.role === "initiator";
+  const isActive = trade.status === "active";
+
+  const statusLabel = isIncomingProposal
+    ? "Nova proposta · aguardando sua resposta"
+    : isWaitingAcceptance
+      ? "Proposta enviada · aguardando aceite"
+      : "Troca aceita · aguardando encontro";
+
   return (
-    <article className="fluent-card border-2 border-dashed border-[#d4a017] p-5">
+    <article
+      className={`fluent-card border-2 border-dashed p-5 ${
+        isIncomingProposal
+          ? "border-[#0067c0] bg-[#f7fbff]"
+          : "border-[#d4a017] bg-white"
+      }`}
+    >
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#9a6700]">
-          Troca combinada · aguardando encontro
+          {statusLabel}
           {trade.groupName ? (
-            <span className="ml-2 normal-case text-[#0067c0]">· {trade.groupName}</span>
+            <span className="ml-2 normal-case text-[#0067c0]">
+              · {trade.groupName}
+            </span>
           ) : null}
         </p>
         <h3 className="mt-1 text-xl font-bold text-[#1b1b1b]">
@@ -46,29 +71,67 @@ export function PendingTradeCard({ trade }: PendingTradeCardProps) {
       </div>
 
       <p className="mt-4 text-xs leading-5 text-[#5f5f5f]">
-        As figurinhas ficam reservadas no gabarito até você confirmar a troca
-        física ou cancelar.
+        {isIncomingProposal
+          ? "Aceite para reservar as figurinhas nos dois lados. Recuse se não quiser esta combinação."
+          : isWaitingAcceptance
+            ? "Quando o parceiro aceitar, as figurinhas ficam reservadas até a troca física."
+            : "As figurinhas ficam reservadas no gabarito. Qualquer um dos dois pode confirmar após o encontro."}
       </p>
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-        <form action={completeTrade} className="flex-1">
-          <input type="hidden" name="tradeId" value={trade.id} />
-          <button
-            type="submit"
-            className="min-h-11 w-full rounded-md bg-[#0f7b0f] px-4 py-3 text-sm font-semibold text-white active:bg-[#0c640c]"
-          >
-            Troca feita ✓
-          </button>
-        </form>
-        <form action={cancelTrade} className="flex-1">
-          <input type="hidden" name="tradeId" value={trade.id} />
-          <button
-            type="submit"
-            className="min-h-11 w-full rounded-md border border-[#d0d0d0] bg-white px-4 py-3 text-sm font-semibold text-[#5f5f5f] active:bg-[#f5f5f5]"
-          >
-            Cancelar combinação
-          </button>
-        </form>
+        {isIncomingProposal ? (
+          <>
+            <form action={acceptTradeAction} className="flex-1">
+              <input type="hidden" name="tradeId" value={trade.id} />
+              <button
+                type="submit"
+                className="min-h-11 w-full rounded-md bg-[#0067c0] px-4 py-3 text-sm font-semibold text-white active:bg-[#005aa8]"
+              >
+                Aceitar troca
+              </button>
+            </form>
+            <form action={rejectTradeAction} className="flex-1">
+              <input type="hidden" name="tradeId" value={trade.id} />
+              <button
+                type="submit"
+                className="min-h-11 w-full rounded-md border border-[#d0d0d0] bg-white px-4 py-3 text-sm font-semibold text-[#5f5f5f] active:bg-[#f5f5f5]"
+              >
+                Recusar
+              </button>
+            </form>
+          </>
+        ) : isWaitingAcceptance ? (
+          <form action={cancelTrade} className="flex-1">
+            <input type="hidden" name="tradeId" value={trade.id} />
+            <button
+              type="submit"
+              className="min-h-11 w-full rounded-md border border-[#d0d0d0] bg-white px-4 py-3 text-sm font-semibold text-[#5f5f5f] active:bg-[#f5f5f5]"
+            >
+              Cancelar proposta
+            </button>
+          </form>
+        ) : isActive ? (
+          <>
+            <form action={completeTrade} className="flex-1">
+              <input type="hidden" name="tradeId" value={trade.id} />
+              <button
+                type="submit"
+                className="min-h-11 w-full rounded-md bg-[#0f7b0f] px-4 py-3 text-sm font-semibold text-white active:bg-[#0c640c]"
+              >
+                Troca feita ✓
+              </button>
+            </form>
+            <form action={cancelTrade} className="flex-1">
+              <input type="hidden" name="tradeId" value={trade.id} />
+              <button
+                type="submit"
+                className="min-h-11 w-full rounded-md border border-[#d0d0d0] bg-white px-4 py-3 text-sm font-semibold text-[#5f5f5f] active:bg-[#f5f5f5]"
+              >
+                Cancelar
+              </button>
+            </form>
+          </>
+        ) : null}
       </div>
     </article>
   );

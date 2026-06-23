@@ -7,6 +7,7 @@ import {
   countOwnedTypes,
   countRepetidasTotal,
   deriveNeeds,
+  tradeableQuantity,
 } from "@/lib/stickers/collection";
 import type { HeatLevel } from "@/lib/types";
 import { getHeatEmoji } from "@/lib/group-intelligence";
@@ -19,6 +20,7 @@ type GabaritoProps = {
   sections: GabaritoSection[];
   initialOwned: Record<string, number>;
   initialReservedGive?: string[];
+  initialReservedGiveCounts?: Record<string, number>;
   initialReservedReceive?: string[];
   initialHeatLevels?: Record<string, HeatLevel>;
 };
@@ -27,10 +29,12 @@ export function Gabarito({
   sections,
   initialOwned,
   initialReservedGive = [],
+  initialReservedGiveCounts = {},
   initialReservedReceive = [],
   initialHeatLevels = {},
 }: GabaritoProps) {
   const reservedGive = useRef(new Set(initialReservedGive));
+  const reservedGiveQty = useRef(initialReservedGiveCounts);
   const reservedReceive = useRef(new Set(initialReservedReceive));
   const heatLevels = useRef(initialHeatLevels);
   const [tab, setTab] = useState<ViewTab>("tenho");
@@ -137,9 +141,26 @@ export function Gabarito({
     };
   }, [flush]);
 
+  const reservationBlock = useCallback((code: string, quantity: number) => {
+    if (reservedReceive.current.has(code) && quantity > 0) {
+      return "Reservada para receber em uma troca.";
+    }
+    const reserved = reservedGiveQty.current[code] ?? 0;
+    if (reserved > 0 && tradeableQuantity(quantity) < reserved) {
+      return "Quantidade menor que o reservado em troca.";
+    }
+    return null;
+  }, []);
+
   const setQuantity = useCallback(
     (code: string, quantity: number) => {
       const q = Math.max(0, Math.min(99, quantity));
+      const block = reservationBlock(code, q);
+      if (block) {
+        setErrorDetail(block);
+        setStatus("error");
+        return;
+      }
       setOwned((prev) => {
         const next = { ...prev };
         if (q === 0) delete next[code];
@@ -148,19 +169,26 @@ export function Gabarito({
       });
       queueEdit(code, q);
     },
-    [queueEdit],
+    [queueEdit, reservationBlock],
   );
 
   const tapCell = useCallback(
     (code: string) => {
       if (tab !== "tenho") return;
+      const nextQty = (owned[code] ?? 0) + 1;
+      const block = reservationBlock(code, nextQty);
+      if (block) {
+        setErrorDetail(block);
+        setStatus("error");
+        return;
+      }
       setOwned((prev) => {
-        const next = { ...prev, [code]: (prev[code] ?? 0) + 1 };
-        queueEdit(code, next[code]);
+        const next = { ...prev, [code]: nextQty };
+        queueEdit(code, nextQty);
         return next;
       });
     },
-    [tab, queueEdit],
+    [tab, queueEdit, owned, reservationBlock],
   );
 
   function handlePointerDown(code: string) {
