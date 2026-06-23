@@ -1,8 +1,6 @@
 import type { TradeMatch } from "@/lib/types";
-import {
-  WhatsAppShareButton,
-  buildTradeMessage,
-} from "@/components/whatsapp-share";
+import { WhatsAppShareButton } from "@/components/whatsapp-share";
+import { buildTradeMessage } from "@/lib/whatsapp";
 
 type TradeCardProps = {
   match: TradeMatch;

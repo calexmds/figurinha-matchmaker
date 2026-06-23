@@ -1,10 +1,8 @@
 import { redirect } from "next/navigation";
 import { createGroup, setActiveGroup, signOut } from "@/app/actions";
 import { requireUser } from "@/lib/auth";
-import {
-  WhatsAppShareButton,
-  buildInviteMessage,
-} from "@/components/whatsapp-share";
+import { WhatsAppShareButton } from "@/components/whatsapp-share";
+import { buildInviteMessage } from "@/lib/whatsapp";
 import { APP_URL } from "@/lib/constants";
 import { getActiveGroup } from "@/lib/data";
 

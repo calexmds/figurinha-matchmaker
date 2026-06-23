@@ -2,10 +2,8 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { InstallPrompt } from "@/components/install-prompt";
 import { StatCard } from "@/components/stat-card";
-import {
-  WhatsAppShareButton,
-  buildProfileMessage,
-} from "@/components/whatsapp-share";
+import { WhatsAppShareButton } from "@/components/whatsapp-share";
+import { buildProfileMessage } from "@/lib/whatsapp";
 import {
   countNeedsAvailableInGroup,
   getActiveGroup,
