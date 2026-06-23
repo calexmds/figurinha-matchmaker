@@ -15,6 +15,7 @@ import {
   membersFromTradeData,
 } from "@/lib/group-intelligence";
 import { GroupIntelligenceHero } from "@/components/group-intelligence-hero";
+import { summarizeTradeDiagnostics } from "@/lib/group-trade-data";
 
 export default async function TradesPage({
   searchParams,
@@ -108,13 +109,26 @@ export default async function TradesPage({
 
   const feedbackIsError = !!query.error;
 
+  const diagnostics =
+    tradeData && matches.length === 0
+      ? summarizeTradeDiagnostics(tradeData, matches.length)
+      : null;
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-bold text-[#1b1b1b]">Trocas</h2>
         <p className="mt-2 text-sm text-[#5f5f5f]">
-          Grupo <strong className="text-[#1b1b1b]">{group.name}</strong> —
-          combine, encontre pessoalmente e confirme quando a troca física
+          Grupo <strong className="text-[#1b1b1b]">{group.name}</strong>
+          {tradeData ? (
+            <>
+              {" "}
+              · {tradeData.meta.memberCount} membros ·{" "}
+              {tradeData.meta.membersWithDuplicates} com repetidas ·{" "}
+              {tradeData.meta.membersWithNeeds} com preciso
+            </>
+          ) : null}
+          {" "}— combine, encontre pessoalmente e confirme quando a troca física
           acontecer.
         </p>
       </div>
@@ -157,9 +171,42 @@ export default async function TradesPage({
         <h3 className="text-base font-bold text-[#1b1b1b]">Sugestões de troca</h3>
 
         {matches.length === 0 ? (
-          <div className="fluent-card p-6 text-sm text-[#5f5f5f]">
-            Nenhuma troca direta encontrada ainda. Convide mais pessoas ou
-            atualize suas listas.
+          <div className="fluent-card space-y-3 p-6 text-sm text-[#5f5f5f]">
+            {diagnostics ? (
+              <>
+                <p className="font-semibold text-[#1b1b1b]">{diagnostics.title}</p>
+                <p className="leading-6">{diagnostics.detail}</p>
+              </>
+            ) : (
+              <p>
+                Nenhuma troca direta encontrada ainda. Convide mais pessoas ou
+                atualize suas listas.
+              </p>
+            )}
+            {tradeData && tradeData.members.length > 0 ? (
+              <ul className="space-y-2 border-t border-[#eee] pt-3">
+                {tradeData.members.map((member) => (
+                  <li
+                    key={member.userId}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-[#fafafa] px-3 py-2"
+                  >
+                    <span className="font-medium text-[#1b1b1b]">
+                      {member.name}
+                    </span>
+                    <span className="text-xs text-[#8a8a8a]">
+                      {member.duplicates.length} repetidas · {member.needs.length}{" "}
+                      preciso
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            <Link
+              href="/grupo"
+              className="inline-flex min-h-10 items-center text-sm font-semibold text-[#0067c0] underline"
+            >
+              Ver membros do grupo →
+            </Link>
           </div>
         ) : (
           <div className="space-y-4">

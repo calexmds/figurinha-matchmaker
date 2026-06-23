@@ -2,6 +2,7 @@ import { computeTradeStats } from "@/lib/match";
 import {
   buildGroupIntelligence,
 } from "@/lib/group-intelligence";
+import { fetchGroupTradeData } from "@/lib/group-trade-data";
 import type { GroupIntelligence } from "@/lib/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -66,18 +67,27 @@ export async function getActiveGroup(
   activeGroupId: string | null,
 ) {
   if (activeGroupId) {
-    const { data } = await supabase
-      .from("groups")
-      .select("id, name, invite_code, owner_id")
-      .eq("id", activeGroupId)
+    const { data: membership } = await supabase
+      .from("group_members")
+      .select("group_id, groups(id, name, invite_code, owner_id)")
+      .eq("group_id", activeGroupId)
+      .eq("user_id", userId)
       .maybeSingle();
-    if (data) return data;
+
+    const group = membership?.groups as
+      | { id: string; name: string; invite_code: string; owner_id: string }
+      | { id: string; name: string; invite_code: string; owner_id: string }[]
+      | null;
+
+    const g = Array.isArray(group) ? group[0] : group;
+    if (g) return g;
   }
 
   const { data: membership } = await supabase
     .from("group_members")
     .select("group_id, groups(id, name, invite_code, owner_id)")
     .eq("user_id", userId)
+    .order("joined_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
@@ -104,30 +114,14 @@ export async function countNeedsAvailableInGroup(
 ) {
   if (needs.length === 0) return 0;
 
-  const { data: members } = await supabase
-    .from("group_members")
-    .select("user_id")
-    .eq("group_id", groupId)
-    .neq("user_id", userId);
+  const tradeData = await fetchGroupTradeData(supabase, groupId, userId);
+  if (!tradeData?.members.length) return 0;
 
-  if (!members?.length) return 0;
+  const duplicateCodes = new Set(
+    tradeData.members.flatMap((m) => m.duplicates.map((d) => d.code)),
+  );
 
-  const memberIds = members.map((m) => m.user_id);
-  const { data: stickers } = await supabase
-    .from("user_stickers")
-    .select("stickers(code)")
-    .in("user_id", memberIds)
-    .gt("quantity", 0);
-
-  const duplicateCodes = new Set<string>();
-  for (const row of stickers ?? []) {
-    const code = extractCode(
-      row.stickers as { code: string } | { code: string }[] | null,
-    );
-    if (code) duplicateCodes.add(code);
-  }
-
-  return needs.filter((code) => duplicateCodes.has(code)).length;
+  return needs.filter((code) => duplicateCodes.has(code.toUpperCase())).length;
 }
 
 export async function getGroupIntelligence(
@@ -135,57 +129,21 @@ export async function getGroupIntelligence(
   groupId: string,
   userId: string,
 ): Promise<GroupIntelligence | null> {
-  const { data: members } = await supabase
-    .from("group_members")
-    .select("user_id")
-    .eq("group_id", groupId);
+  const tradeData = await fetchGroupTradeData(supabase, groupId, userId);
+  if (!tradeData) return null;
 
-  if (!members?.length) return null;
-
-  const userIds = members.map((m) => m.user_id);
-
-  const { data: allUserStickers } = await supabase
-    .from("user_stickers")
-    .select("user_id, quantity, stickers(code)")
-    .in("user_id", userIds)
-    .gt("quantity", 0);
-
-  const { data: allUserNeeds } = await supabase
-    .from("user_needs")
-    .select("user_id, stickers(code)")
-    .in("user_id", userIds);
-
-  const duplicatesByUser = new Map<
-    string,
-    Array<{ code: string; quantity: number }>
-  >();
-  const needsByUser = new Map<string, string[]>();
-
-  for (const row of allUserStickers ?? []) {
-    const code = extractCode(
-      row.stickers as { code: string } | { code: string }[] | null,
-    );
-    if (!code) continue;
-    const list = duplicatesByUser.get(row.user_id) ?? [];
-    list.push({ code, quantity: row.quantity });
-    duplicatesByUser.set(row.user_id, list);
-  }
-
-  for (const row of allUserNeeds ?? []) {
-    const code = extractCode(
-      row.stickers as { code: string } | { code: string }[] | null,
-    );
-    if (!code) continue;
-    const list = needsByUser.get(row.user_id) ?? [];
-    list.push(code);
-    needsByUser.set(row.user_id, list);
-  }
-
-  const snapshots = userIds.map((id) => ({
-    userId: id,
-    duplicates: duplicatesByUser.get(id) ?? [],
-    needs: needsByUser.get(id) ?? [],
-  }));
+  const snapshots = [
+    {
+      userId: tradeData.currentUserId,
+      duplicates: tradeData.currentDuplicates,
+      needs: tradeData.currentNeeds,
+    },
+    ...tradeData.members.map((m) => ({
+      userId: m.userId,
+      duplicates: m.duplicates,
+      needs: m.needs,
+    })),
+  ];
 
   return buildGroupIntelligence(snapshots, userId);
 }

@@ -282,76 +282,8 @@ export async function getGroupTradeData(groupId: string) {
 
   if (!user) return null;
 
-  const { data: members } = await supabase
-    .from("group_members")
-    .select("user_id, profiles(id, name, avatar_url)")
-    .eq("group_id", groupId);
-
-  if (!members) return null;
-
-  const userIds = members.map((m) => m.user_id);
-
-  const { data: allUserStickers } = await supabase
-    .from("user_stickers")
-    .select("user_id, quantity, stickers(code)")
-    .in("user_id", userIds)
-    .gt("quantity", 0);
-
-  const { data: allUserNeeds } = await supabase
-    .from("user_needs")
-    .select("user_id, stickers(code)")
-    .in("user_id", userIds);
-
-  const duplicatesByUser = new Map<
-    string,
-    Array<{ code: string; quantity: number }>
-  >();
-  const needsByUser = new Map<string, string[]>();
-
-  for (const row of allUserStickers ?? []) {
-    const sticker = row.stickers as { code: string } | { code: string }[] | null;
-    const code = Array.isArray(sticker) ? sticker[0]?.code : sticker?.code;
-    if (!code) continue;
-    const list = duplicatesByUser.get(row.user_id) ?? [];
-    list.push({ code, quantity: row.quantity });
-    duplicatesByUser.set(row.user_id, list);
-  }
-
-  for (const row of allUserNeeds ?? []) {
-    const sticker = row.stickers as { code: string } | { code: string }[] | null;
-    const code = Array.isArray(sticker) ? sticker[0]?.code : sticker?.code;
-    if (!code) continue;
-    const list = needsByUser.get(row.user_id) ?? [];
-    list.push(code);
-    needsByUser.set(row.user_id, list);
-  }
-
-  const currentDuplicates = duplicatesByUser.get(user.id) ?? [];
-  const currentNeeds = needsByUser.get(user.id) ?? [];
-
-  const memberData = members
-    .filter((m) => m.user_id !== user.id)
-    .map((m) => {
-      const profile = m.profiles as
-        | { id: string; name: string | null; avatar_url: string | null }
-        | { id: string; name: string | null; avatar_url: string | null }[]
-        | null;
-      const p = Array.isArray(profile) ? profile[0] : profile;
-      return {
-        userId: m.user_id,
-        name: p?.name ?? "Colecionador",
-        avatarUrl: p?.avatar_url ?? null,
-        duplicates: duplicatesByUser.get(m.user_id) ?? [],
-        needs: needsByUser.get(m.user_id) ?? [],
-      };
-    });
-
-  return {
-    currentUserId: user.id,
-    currentDuplicates,
-    currentNeeds,
-    members: memberData,
-  };
+  const { fetchGroupTradeData } = await import("@/lib/group-trade-data");
+  return fetchGroupTradeData(supabase, groupId, user.id);
 }
 
 export async function combineTrade(formData: FormData) {

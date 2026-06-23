@@ -20,6 +20,7 @@ App de troca de figurinhas da Copa do Mundo 2026 com match automático dentro de
    - `supabase/seed.sql`
    - `supabase/migrations/002_user_needs.sql` *(se o projeto já existia antes desta versão)*
    - `supabase/migrations/003_trades.sql` *(trocas combinadas / pendentes)*
+   - `supabase/migrations/004_group_trade_snapshot.sql` *(match de trocas entre membros)*
 3. Em **Authentication → Providers**, ative **Google** e **Email** (magic link)
 4. Em **Authentication → URL Configuration**, adicione:
    - Site URL: `https://www.figurinhamatchmaker.com.br`
