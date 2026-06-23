@@ -1,4 +1,8 @@
 import { computeTradeStats } from "@/lib/match";
+import {
+  buildGroupIntelligence,
+} from "@/lib/group-intelligence";
+import type { GroupIntelligence } from "@/lib/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 function extractCode(
@@ -124,6 +128,66 @@ export async function countNeedsAvailableInGroup(
   }
 
   return needs.filter((code) => duplicateCodes.has(code)).length;
+}
+
+export async function getGroupIntelligence(
+  supabase: SupabaseClient,
+  groupId: string,
+  userId: string,
+): Promise<GroupIntelligence | null> {
+  const { data: members } = await supabase
+    .from("group_members")
+    .select("user_id")
+    .eq("group_id", groupId);
+
+  if (!members?.length) return null;
+
+  const userIds = members.map((m) => m.user_id);
+
+  const { data: allUserStickers } = await supabase
+    .from("user_stickers")
+    .select("user_id, quantity, stickers(code)")
+    .in("user_id", userIds)
+    .gt("quantity", 0);
+
+  const { data: allUserNeeds } = await supabase
+    .from("user_needs")
+    .select("user_id, stickers(code)")
+    .in("user_id", userIds);
+
+  const duplicatesByUser = new Map<
+    string,
+    Array<{ code: string; quantity: number }>
+  >();
+  const needsByUser = new Map<string, string[]>();
+
+  for (const row of allUserStickers ?? []) {
+    const code = extractCode(
+      row.stickers as { code: string } | { code: string }[] | null,
+    );
+    if (!code) continue;
+    const list = duplicatesByUser.get(row.user_id) ?? [];
+    list.push({ code, quantity: row.quantity });
+    duplicatesByUser.set(row.user_id, list);
+  }
+
+  for (const row of allUserNeeds ?? []) {
+    const code = extractCode(
+      row.stickers as { code: string } | { code: string }[] | null,
+    );
+    if (!code) continue;
+    const list = needsByUser.get(row.user_id) ?? [];
+    list.push(code);
+    needsByUser.set(row.user_id, list);
+  }
+
+  const snapshots = userIds.map((id) => ({
+    userId: id,
+    duplicates: duplicatesByUser.get(id) ?? [],
+    needs: needsByUser.get(id) ?? [],
+  }));
+
+  return buildGroupIntelligence(snapshots, userId);
 }
 
 // Backwards-compatible alias used during refactor cleanup.

@@ -5,13 +5,21 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSiteUrl } from "@/lib/site-url";
+import { joinGroupForUser } from "@/lib/group-join";
+import {
+  PENDING_INVITE_COOKIE,
+  inviteCookieOptions,
+} from "@/lib/invite-cookie";
 import { generateInviteCode, normalizeInviteCode } from "@/lib/invite";
+import {
+  cancelPendingTrade,
+  completePendingTrade,
+  createPendingTrade,
+} from "@/lib/trades";
 import {
   parseNeedsInput,
   parseStickerInput,
 } from "@/lib/stickers/parse";
-
-const PENDING_INVITE_COOKIE = "pending_invite_code";
 
 export async function signInWithGoogle(returnTo?: string) {
   const supabase = await createClient();
@@ -37,12 +45,11 @@ export async function signOut() {
 
 export async function setPendingInvite(code: string) {
   const cookieStore = await cookies();
-  cookieStore.set(PENDING_INVITE_COOKIE, normalizeInviteCode(code), {
-    httpOnly: true,
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24,
-    path: "/",
-  });
+  cookieStore.set(
+    PENDING_INVITE_COOKIE,
+    normalizeInviteCode(code),
+    inviteCookieOptions,
+  );
 }
 
 export async function consumePendingInvite(): Promise<string | null> {
@@ -65,34 +72,11 @@ export async function joinGroupByCode(inviteCode: string) {
     redirect(`/login?next=${encodeURIComponent(`/join/${inviteCode}`)}`);
   }
 
-  const code = normalizeInviteCode(inviteCode);
-  const { data: group, error: groupError } = await supabase
-    .from("groups")
-    .select("id, name")
-    .eq("invite_code", code)
-    .single();
-
-  if (groupError || !group) {
-    return { error: "Grupo não encontrado. Verifique o código de convite." };
+  const result = await joinGroupForUser(supabase, user, inviteCode);
+  if (!result.ok) {
+    return { error: result.error };
   }
 
-  const { error: memberError } = await supabase.from("group_members").upsert(
-    { group_id: group.id, user_id: user.id },
-    { onConflict: "group_id,user_id" },
-  );
-
-  if (memberError) {
-    return { error: "Não foi possível entrar no grupo." };
-  }
-
-  await supabase
-    .from("profiles")
-    .update({ active_group_id: group.id })
-    .eq("id", user.id);
-
-  revalidatePath("/home");
-  revalidatePath("/grupo");
-  revalidatePath("/trocas");
   redirect("/onboarding");
 }
 
@@ -368,4 +352,75 @@ export async function getGroupTradeData(groupId: string) {
     currentNeeds,
     members: memberData,
   };
+}
+
+export async function combineTrade(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const groupId = String(formData.get("groupId") ?? "");
+  const partnerId = String(formData.get("partnerId") ?? "");
+  const give = String(formData.get("give") ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const receive = String(formData.get("receive") ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const result = await createPendingTrade(
+    supabase,
+    user.id,
+    groupId,
+    partnerId,
+    give,
+    receive,
+  );
+
+  if (!result.ok) {
+    redirect(`/trocas?error=${encodeURIComponent(result.error)}`);
+  }
+
+  redirect("/trocas?combined=1");
+}
+
+export async function completeTrade(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const tradeId = String(formData.get("tradeId") ?? "");
+  const result = await completePendingTrade(supabase, user.id, tradeId);
+
+  if (!result.ok) {
+    redirect(`/trocas?error=${encodeURIComponent(result.error)}`);
+  }
+
+  redirect("/trocas?completed=1");
+}
+
+export async function cancelTrade(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const tradeId = String(formData.get("tradeId") ?? "");
+  const result = await cancelPendingTrade(supabase, user.id, tradeId);
+
+  if (!result.ok) {
+    redirect(`/trocas?error=${encodeURIComponent(result.error)}`);
+  }
+
+  redirect("/trocas?cancelled=1");
 }

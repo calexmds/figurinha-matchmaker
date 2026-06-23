@@ -2,11 +2,13 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { InstallPrompt } from "@/components/install-prompt";
 import { StatCard } from "@/components/stat-card";
+import { GroupIntelligenceHero } from "@/components/group-intelligence-hero";
 import { WhatsAppShareButton } from "@/components/whatsapp-share";
 import { buildProfileMessage } from "@/lib/whatsapp";
 import {
   countNeedsAvailableInGroup,
   getActiveGroup,
+  getGroupIntelligence,
   getUserTradeSummary,
 } from "@/lib/data";
 
@@ -22,6 +24,9 @@ export default async function HomePage() {
     profile?.active_group_id ?? null,
   );
 
+  const intelligence =
+    group ? await getGroupIntelligence(supabase, group.id, user.id) : null;
+
   const availableInGroup =
     group && needs.length > 0
       ? await countNeedsAvailableInGroup(
@@ -33,6 +38,8 @@ export default async function HomePage() {
       : 0;
 
   const hasLists = stats.duplicateCount > 0 || stats.needCount > 0;
+  const goldenCount =
+    intelligence?.powerStickers.filter((s) => s.level === "golden").length ?? 0;
 
   return (
     <div className="space-y-6">
@@ -43,12 +50,22 @@ export default async function HomePage() {
           Olá, {profile?.name ?? "colecionador"}
         </p>
         <h2 className="mt-1 text-2xl font-bold text-[#1b1b1b]">
-          {hasLists ? "Pronto para trocar" : "Cadastre suas listas"}
+          {goldenCount > 0
+            ? "Você tem figurinhas de ouro!"
+            : hasLists
+              ? "Pronto para trocar"
+              : "Cadastre suas listas"}
         </h2>
         {group ? (
           <p className="mt-2 text-sm text-[#5f5f5f]">
             Grupo ativo:{" "}
             <strong className="text-[#1b1b1b]">{group.name}</strong>
+            {intelligence && intelligence.market.memberCount > 1 ? (
+              <>
+                {" "}
+                · {intelligence.market.memberCount} colecionadores no radar
+              </>
+            ) : null}
           </p>
         ) : (
           <p className="mt-2 text-sm text-[#9a6700]">
@@ -59,6 +76,15 @@ export default async function HomePage() {
           </p>
         )}
       </div>
+
+      {group && intelligence ? (
+        <GroupIntelligenceHero
+          groupName={group.name}
+          memberCount={intelligence.market.memberCount}
+          powerStickers={intelligence.powerStickers}
+          chaseStickers={intelligence.chaseStickers}
+        />
+      ) : null}
 
       <div className="grid grid-cols-2 gap-3">
         <StatCard
@@ -77,6 +103,16 @@ export default async function HomePage() {
           value={availableInGroup}
           accent="white"
         />
+        {goldenCount > 0 ? (
+          <StatCard label="Ouro do grupo" value={goldenCount} accent="yellow" />
+        ) : null}
+        {intelligence && intelligence.hotCodes.length > 0 ? (
+          <StatCard
+            label="Quentes no grupo"
+            value={intelligence.hotCodes.length}
+            accent="yellow"
+          />
+        ) : null}
       </div>
 
       {!hasLists ? (

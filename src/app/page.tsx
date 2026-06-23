@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { signInWithGoogle } from "@/app/actions";
 import { CopaBadge } from "@/components/copa-badge";
 import { APP_NAME, APP_URL, TOTAL_STICKERS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
@@ -13,11 +12,6 @@ export default async function LandingPage() {
 
   if (user) {
     redirect("/home");
-  }
-
-  async function login() {
-    "use server";
-    await signInWithGoogle("/home");
   }
 
   return (
@@ -45,20 +39,20 @@ export default async function LandingPage() {
           <li>✓ Convite e proposta de troca no WhatsApp</li>
         </ul>
 
-        <form action={login} className="mt-8 flex flex-col gap-3">
-          <button
-            type="submit"
+        <div className="mt-8 flex flex-col gap-3">
+          <Link
+            href="/api/auth/google?next=/home"
             className="inline-flex min-h-12 items-center justify-center rounded-md bg-white px-5 py-3 text-sm font-semibold text-[#0067c0] transition active:bg-[#eaeaea]"
           >
             Entrar com Google
-          </button>
+          </Link>
           <Link
-            href="/login"
+            href="/login?next=/home"
             className="inline-flex min-h-12 items-center justify-center rounded-md border border-white/30 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition active:bg-white/20"
           >
-            Já tenho convite
+            Entrar com e-mail
           </Link>
-        </form>
+        </div>
       </section>
 
       <section className="mt-8 grid gap-4 sm:grid-cols-3">

@@ -1,11 +1,27 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { TradeCard } from "@/components/trade-card";
+import { PendingTradeCard } from "@/components/pending-trade-card";
 import { computeTradeMatches } from "@/lib/match";
 import { getActiveGroup, getUserTradeSummary } from "@/lib/data";
 import { getGroupTradeData } from "@/app/actions";
+import {
+  applyReservationsToLists,
+  getPendingTrades,
+  getUserReservations,
+} from "@/lib/trades";
+import {
+  buildGroupIntelligence,
+  membersFromTradeData,
+} from "@/lib/group-intelligence";
+import { GroupIntelligenceHero } from "@/components/group-intelligence-hero";
 
-export default async function TradesPage() {
+export default async function TradesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; combined?: string; completed?: string; cancelled?: string }>;
+}) {
+  const query = await searchParams;
   const { supabase, user, profile } = await requireUser();
   const group = await getActiveGroup(
     supabase,
@@ -31,8 +47,14 @@ export default async function TradesPage() {
   }
 
   const { stats } = await getUserTradeSummary(supabase, user.id);
+  const pendingTrades = await getPendingTrades(supabase, user.id, group.id);
+  const pendingPartnerIds = new Set(pendingTrades.map((t) => t.partnerId));
 
-  if (stats.duplicateCount === 0 && stats.needCount === 0) {
+  if (
+    stats.duplicateCount === 0 &&
+    stats.needCount === 0 &&
+    pendingTrades.length === 0
+  ) {
     return (
       <div className="fluent-card p-6">
         <h2 className="text-xl font-bold text-[#1b1b1b]">Trocas</h2>
@@ -51,38 +73,109 @@ export default async function TradesPage() {
   }
 
   const tradeData = await getGroupTradeData(group.id);
+  const reservations = await getUserReservations(supabase, user.id);
+
+  const intelligence = tradeData
+    ? buildGroupIntelligence(
+        membersFromTradeData(tradeData),
+        tradeData.currentUserId,
+      )
+    : null;
+
+  const { availableDuplicates, availableNeeds } = tradeData
+    ? applyReservationsToLists(
+        tradeData.currentDuplicates,
+        tradeData.currentNeeds,
+        reservations,
+      )
+    : { availableDuplicates: [], availableNeeds: [] };
 
   const matches = tradeData
     ? computeTradeMatches(
         tradeData.currentUserId,
-        tradeData.currentDuplicates,
-        tradeData.currentNeeds,
+        availableDuplicates,
+        availableNeeds,
         tradeData.members,
+        intelligence?.market,
       )
     : [];
+
+  const feedback =
+    query.error ??
+    (query.combined ? "Troca combinada! Figurinhas reservadas no gabarito." : null) ??
+    (query.completed ? "Troca concluída! Listas atualizadas." : null) ??
+    (query.cancelled ? "Combinação cancelada." : null);
+
+  const feedbackIsError = !!query.error;
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold text-[#1b1b1b]">Sugestões de troca</h2>
+        <h2 className="text-xl font-bold text-[#1b1b1b]">Trocas</h2>
         <p className="mt-2 text-sm text-[#5f5f5f]">
-          Grupo <strong className="text-[#1b1b1b]">{group.name}</strong> — com
-          base no que você precisa e no que tem repetido.
+          Grupo <strong className="text-[#1b1b1b]">{group.name}</strong> —
+          combine, encontre pessoalmente e confirme quando a troca física
+          acontecer.
         </p>
       </div>
 
-      {matches.length === 0 ? (
-        <div className="fluent-card p-6 text-sm text-[#5f5f5f]">
-          Nenhuma troca direta encontrada ainda. Convide mais pessoas ou
-          atualize suas listas.
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {matches.map((match, index) => (
-            <TradeCard key={match.userId} match={match} rank={index + 1} />
+      {feedback ? (
+        <p
+          className={`rounded-md border px-4 py-3 text-sm ${
+            feedbackIsError
+              ? "border-[#f3c9c5] bg-[#fdf0ef] text-[#c42b1c]"
+              : "border-[#cfe9cf] bg-[#eef7ee] text-[#0f7b0f]"
+          }`}
+        >
+          {feedbackIsError ? decodeURIComponent(feedback) : feedback}
+        </p>
+      ) : null}
+
+      {intelligence &&
+      (intelligence.powerStickers.length > 0 ||
+        intelligence.chaseStickers.length > 0) ? (
+        <GroupIntelligenceHero
+          groupName={group.name}
+          memberCount={intelligence.market.memberCount}
+          powerStickers={intelligence.powerStickers}
+          chaseStickers={intelligence.chaseStickers}
+        />
+      ) : null}
+
+      {pendingTrades.length > 0 ? (
+        <section className="space-y-4">
+          <h3 className="text-base font-bold text-[#1b1b1b]">
+            Trocas combinadas ({pendingTrades.length})
+          </h3>
+          {pendingTrades.map((trade) => (
+            <PendingTradeCard key={trade.id} trade={trade} />
           ))}
-        </div>
-      )}
+        </section>
+      ) : null}
+
+      <section className="space-y-4">
+        <h3 className="text-base font-bold text-[#1b1b1b]">Sugestões de troca</h3>
+
+        {matches.length === 0 ? (
+          <div className="fluent-card p-6 text-sm text-[#5f5f5f]">
+            Nenhuma troca direta encontrada ainda. Convide mais pessoas ou
+            atualize suas listas.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {matches.map((match, index) => (
+              <TradeCard
+                key={match.userId}
+                match={match}
+                rank={index + 1}
+                groupId={group.id}
+                market={intelligence?.market}
+                hasPendingWithPartner={pendingPartnerIds.has(match.userId)}
+              />
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

@@ -7,7 +7,11 @@ Entra aqui para cruzar repetidas e ver sugestões de troca (só nosso grupo):
 
 👉 ${APP_URL}/join/${inviteCode}
 
-Entra com Google e marca suas repetidas tocando no gabarito. Leva 2 minutos.`;
+1) Toque no link acima
+2) Entre com Google ou e-mail (link mágico, sem senha)
+3) Marque repetidas e o que falta no gabarito — leva ~2 min
+
+Se o botão não abrir no WhatsApp, toque nos ⋮ e escolha "Abrir no Chrome".`;
 }
 
 export function buildTradeMessage(
@@ -23,6 +27,8 @@ export function buildTradeMessage(
 
 Eu te dou: ${giveText}
 Você me dá: ${receiveText}
+
+(O app mostra se alguma figurinha está 🔥 quente ou 👑 ouro no grupo — vale negociar!)
 
 Topa trocar? 🔄
 ${APP_URL}/trocas`;

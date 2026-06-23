@@ -1,19 +1,45 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
+import {
+  PENDING_INVITE_COOKIE,
+  inviteCookieOptions,
+  parseInviteFromPath,
+} from "@/lib/invite-cookie";
+import { normalizeInviteCode } from "@/lib/invite";
 
 export async function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
-  // Resiliência: se o código OAuth cair em qualquer página que não seja a
-  // rota de callback (ex.: Supabase usou o Site URL como fallback), encaminha
-  // automaticamente para /auth/callback preservando os parâmetros.
+  // OAuth / magic link: encaminha ?code para /auth/callback
   if (searchParams.has("code") && pathname !== "/auth/callback") {
     const callbackUrl = request.nextUrl.clone();
     callbackUrl.pathname = "/auth/callback";
     return NextResponse.redirect(callbackUrl);
   }
 
-  return updateSession(request);
+  // Magic link legado (?token_hash=)
+  if (
+    searchParams.has("token_hash") &&
+    pathname !== "/auth/callback"
+  ) {
+    const callbackUrl = request.nextUrl.clone();
+    callbackUrl.pathname = "/auth/callback";
+    return NextResponse.redirect(callbackUrl);
+  }
+
+  const response = await updateSession(request);
+
+  // Grava convite pendente ao abrir /join/CODIGO
+  const inviteFromPath = parseInviteFromPath(pathname);
+  if (inviteFromPath) {
+    response.cookies.set(
+      PENDING_INVITE_COOKIE,
+      normalizeInviteCode(inviteFromPath),
+      inviteCookieOptions,
+    );
+  }
+
+  return response;
 }
 
 export const config = {

@@ -1,4 +1,6 @@
 import type { TradeMatch } from "@/lib/types";
+import type { GroupMarket } from "@/lib/group-intelligence";
+import { computeTradeHeatBonus } from "@/lib/group-intelligence";
 
 type TradeProfile = {
   userId: string;
@@ -42,6 +44,7 @@ export function computeTradeMatches(
     duplicates: Array<{ code: string; quantity: number }>;
     needs: string[];
   }>,
+  market?: GroupMarket,
 ): TradeMatch[] {
   const current = buildTradeProfile(
     currentUserId,
@@ -77,7 +80,23 @@ export function computeTradeMatches(
       receive.length === 0 || give.length === 0
         ? 0
         : Math.min(receive.length, give.length) * 2;
-    const score = receive.length * 10 + give.length * 5 + balanceBonus;
+    let score = receive.length * 10 + give.length * 5 + balanceBonus;
+
+    let heatScore = 0;
+    let bargainPower = 0;
+    let hotGive: string[] = [];
+    let hotReceive: string[] = [];
+    let bargainTip: string | null = null;
+
+    if (market) {
+      const heat = computeTradeHeatBonus(market, give, receive);
+      heatScore = heat.heatScore;
+      bargainPower = heat.bargainPower;
+      hotGive = heat.hotGive;
+      hotReceive = heat.hotReceive;
+      bargainTip = heat.bargainTip;
+      score += heatScore;
+    }
 
     matches.push({
       userId: other.userId,
@@ -88,6 +107,11 @@ export function computeTradeMatches(
       receiveCount: receive.length,
       giveCount: give.length,
       score,
+      heatScore,
+      bargainPower,
+      hotGive,
+      hotReceive,
+      bargainTip,
     });
   }
 

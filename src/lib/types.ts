@@ -35,6 +35,50 @@ export type CollectionStats = {
   percent: number;
 };
 
+export type HeatLevel = "common" | "wanted" | "hot" | "golden";
+
+export type StickerMarketInfo = {
+  code: string;
+  demand: number;
+  suppliers: number;
+  supplierIds: string[];
+  scarcity: number;
+  level: HeatLevel;
+  soleSupplierId: string | null;
+};
+
+export type GroupMarket = {
+  memberCount: number;
+  byCode: Map<string, StickerMarketInfo>;
+};
+
+export type UserPowerSticker = {
+  code: string;
+  demand: number;
+  suppliers: number;
+  level: HeatLevel;
+  soleSupplier: boolean;
+  bargainTip: string;
+  suggestedAsk: number;
+};
+
+export type UserChaseSticker = {
+  code: string;
+  demand: number;
+  suppliers: number;
+  level: HeatLevel;
+  competitors: number;
+  chaseTip: string;
+};
+
+export type GroupIntelligence = {
+  market: GroupMarket;
+  powerStickers: UserPowerSticker[];
+  chaseStickers: UserChaseSticker[];
+  hotCodes: string[];
+  goldenCodes: string[];
+};
+
 export type TradeMatch = {
   userId: string;
   name: string;
@@ -44,4 +88,9 @@ export type TradeMatch = {
   receiveCount: number;
   giveCount: number;
   score: number;
+  heatScore?: number;
+  bargainPower?: number;
+  hotGive?: string[];
+  hotReceive?: string[];
+  bargainTip?: string | null;
 };

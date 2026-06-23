@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { StickerEdit } from "@/lib/stickers/persist-edits";
 import type { GabaritoSection } from "@/lib/stickers/catalog";
+import type { HeatLevel } from "@/lib/types";
+import { getHeatEmoji } from "@/lib/group-intelligence";
 
 type Mode = "dup" | "need";
 type SaveStatus = "idle" | "saving" | "saved" | "error";
@@ -11,13 +13,22 @@ type GabaritoProps = {
   sections: GabaritoSection[];
   initialDuplicates: Record<string, number>;
   initialNeeds: string[];
+  initialReservedGive?: string[];
+  initialReservedReceive?: string[];
+  initialHeatLevels?: Record<string, HeatLevel>;
 };
 
 export function Gabarito({
   sections,
   initialDuplicates,
   initialNeeds,
+  initialReservedGive = [],
+  initialReservedReceive = [],
+  initialHeatLevels = {},
 }: GabaritoProps) {
+  const reservedGive = useRef(new Set(initialReservedGive));
+  const reservedReceive = useRef(new Set(initialReservedReceive));
+  const heatLevels = useRef(initialHeatLevels);
   const [mode, setMode] = useState<Mode>("dup");
   const [dup, setDup] = useState<Record<string, number>>(initialDuplicates);
   const [need, setNeed] = useState<Record<string, number>>(() =>
@@ -226,8 +237,24 @@ export function Gabarito({
       )
     : sections;
 
+  const reservedCount =
+    reservedGive.current.size + reservedReceive.current.size;
+
   return (
     <div className="space-y-4">
+      {reservedCount > 0 ? (
+        <div className="rounded-lg border border-dashed border-[#d4a017] bg-[#fffbf0] px-4 py-3 text-sm text-[#9a6700]">
+          <strong>{reservedCount}</strong> figurinha
+          {reservedCount === 1 ? "" : "s"} em troca combinada — borda{" "}
+          <span className="font-semibold text-[#9a6700]">âmbar</span> (entrega) ou{" "}
+          <span className="font-semibold text-[#7b5ea7]">lilás</span> (recebe).
+          Confirme em{" "}
+          <a href="/trocas" className="font-semibold underline">
+            Trocas
+          </a>
+          .
+        </div>
+      ) : null}
       {/* Mode toggle */}
       <div className="sticky top-[60px] z-10 -mx-4 border-b border-[#e6e6e6] bg-white px-4 py-2">
         <div className="grid grid-cols-2 gap-1 rounded-lg border border-[#e6e6e6] bg-[#ededed] p-1">
@@ -315,6 +342,13 @@ export function Gabarito({
           : "Toque para marcar o que falta. Toque de novo para desmarcar."}
       </p>
 
+      {Object.keys(initialHeatLevels).length > 0 ? (
+        <p className="text-[11px] leading-4 text-[#8a8a8a]">
+          👑 ouro · 🔥 quente · ✨ procurada = demanda alta no grupo (poder de
+          barganha).
+        </p>
+      ) : null}
+
       {/* Sections */}
       <div className="space-y-2">
         {filteredSections.length === 0 ? (
@@ -371,6 +405,31 @@ export function Gabarito({
                   {section.cells.map((cell) => {
                     const marked = isMarked(cell.code);
                     const qty = dup[cell.code] ?? 0;
+                    const reservedOut =
+                      mode === "dup" && reservedGive.current.has(cell.code);
+                    const reservedIn =
+                      mode === "need" &&
+                      reservedReceive.current.has(cell.code);
+                    const heat = heatLevels.current[cell.code];
+                    const showHeat =
+                      mode === "dup" &&
+                      heat &&
+                      heat !== "common" &&
+                      (dup[cell.code] ?? 0) > 0;
+                    const heatRing =
+                      heat === "golden"
+                        ? "ring-2 ring-[#d4a017] ring-offset-1"
+                        : heat === "hot"
+                          ? "ring-2 ring-[#ff8c00]/70 ring-offset-1"
+                          : heat === "wanted"
+                            ? "ring-1 ring-[#0067c0]/50 ring-offset-1"
+                            : "";
+                    const reservedRing = reservedOut
+                      ? "ring-2 ring-dashed ring-[#d4a017] ring-offset-1"
+                      : reservedIn
+                        ? "ring-2 ring-dashed ring-[#7b5ea7] ring-offset-1"
+                        : "";
+                    const activeRing = reservedRing || heatRing;
                     return (
                       <button
                         key={cell.code}
@@ -382,14 +441,24 @@ export function Gabarito({
                         onClick={() => handleClick(cell.code)}
                         className={`relative flex aspect-[4/3] select-none items-center justify-center rounded-md border px-0.5 text-center transition ${
                           marked
-                            ? "border-transparent text-white"
-                            : "border-[#e0e0e0] bg-[#fafafa] text-[#5f5f5f]"
+                            ? `border-transparent text-white ${activeRing}`
+                            : activeRing
+                              ? `border-[#e0e0e0] bg-[#fafafa] text-[#5f5f5f] ${activeRing}`
+                              : "border-[#e0e0e0] bg-[#fafafa] text-[#5f5f5f]"
                         }`}
                         style={marked ? { background: accent } : undefined}
                       >
                         <span className="text-[10px] font-bold leading-tight tracking-tight sm:text-[11px]">
                           {cell.label}
                         </span>
+                        {showHeat ? (
+                          <span
+                            className="absolute -left-1 -top-1 text-[10px] leading-none"
+                            aria-hidden
+                          >
+                            {getHeatEmoji(heat)}
+                          </span>
+                        ) : null}
                         {mode === "dup" && qty > 1 ? (
                           <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#1b1b1b] px-1 text-[10px] font-bold text-white">
                             ×{qty}

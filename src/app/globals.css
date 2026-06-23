@@ -73,3 +73,17 @@ select {
 .animate-sheet-up {
   animation: sheet-up 0.18s ease-out;
 }
+
+@keyframes golden-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(212, 160, 23, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(212, 160, 23, 0.15);
+  }
+}
+
+.animate-golden-pulse {
+  animation: golden-pulse 2.5s ease-in-out infinite;
+}

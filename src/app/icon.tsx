@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { BrandLogoIcon } from "@/lib/brand-logo-mark";
 
 export const size = { width: 512, height: 512 };
 export const contentType = "image/png";
@@ -13,25 +14,10 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#f3f3f3",
+          background: "linear-gradient(145deg, #eef6ff 0%, #f3f3f3 55%, #eef8ee 100%)",
         }}
       >
-        <div
-          style={{
-            width: 400,
-            height: 400,
-            borderRadius: 88,
-            background: "#0067c0",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#ffffff",
-            fontSize: 140,
-            fontWeight: 800,
-          }}
-        >
-          FM
-        </div>
+        <BrandLogoIcon size={420} />
       </div>
     ),
     { ...size },
