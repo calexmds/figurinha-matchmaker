@@ -1,6 +1,7 @@
 export const APP_NAME = "Figurinha Matchmaker";
 export const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL ?? "https://figurinhamatchmaker.com.br";
+  process.env.NEXT_PUBLIC_APP_URL ??
+  "https://www.figurinhamatchmaker.com.br";
 export const TOTAL_STICKERS = 980;
 
 export const TEAMS = [
