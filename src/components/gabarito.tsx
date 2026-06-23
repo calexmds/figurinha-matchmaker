@@ -219,7 +219,12 @@ export function Gabarito({
   };
 
   const sectionCount = (section: GabaritoSection) =>
-    section.cells.filter((c) => cellVisible(c.code)).length;
+    section.cells.filter((c) => {
+      const qty = owned[c.code] ?? 0;
+      if (tab === "tenho") return qty > 0;
+      if (tab === "repetidas") return qty > 1;
+      return qty < 1;
+    }).length;
 
   const reservedCount =
     reservedGive.current.size + reservedReceive.current.size;
