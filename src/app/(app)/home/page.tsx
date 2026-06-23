@@ -9,36 +9,72 @@ import {
   buildGroupIntelligence,
   membersFromTradeData,
 } from "@/lib/group-intelligence";
-import { getActiveGroup, getUserTradeSummary } from "@/lib/data";
+import { getUserTradeSummary } from "@/lib/data";
 import {
   countNeedsAvailableFromTradeData,
   getCachedGroupTradeData,
 } from "@/lib/group-trade-data";
+import { getUserGroupsWithMembers } from "@/lib/groups";
 
 export default async function HomePage() {
   const { supabase, user, profile } = await requireUser();
 
-  const [{ duplicates, needs, stats }, group] = await Promise.all([
+  const [{ duplicates, needs, stats }, groups] = await Promise.all([
     getUserTradeSummary(supabase, user.id),
-    getActiveGroup(supabase, user.id, profile?.active_group_id ?? null),
+    getUserGroupsWithMembers(supabase, user.id),
   ]);
 
-  const tradeData = group
-    ? await getCachedGroupTradeData(supabase, group.id, user.id)
-    : null;
+  const tradeSnapshots = await Promise.all(
+    groups.map(async (g) => {
+      const tradeData = await getCachedGroupTradeData(supabase, g.id, user.id);
+      if (!tradeData) return null;
+      const intelligence = buildGroupIntelligence(
+        membersFromTradeData(tradeData),
+        user.id,
+      );
+      return { group: g, tradeData, intelligence };
+    }),
+  );
 
-  const intelligence = tradeData
-    ? buildGroupIntelligence(membersFromTradeData(tradeData), user.id)
-    : null;
+  const validSnapshots = tradeSnapshots.filter(
+    (s): s is NonNullable<typeof s> => !!s,
+  );
 
-  const availableInGroup =
-    tradeData && needs.length > 0
-      ? countNeedsAvailableFromTradeData(tradeData, needs)
-      : 0;
+  const availableInGroups = validSnapshots.reduce((sum, s) => {
+    if (needs.length === 0) return sum;
+    return sum + countNeedsAvailableFromTradeData(s.tradeData, needs);
+  }, 0);
+
+  const heroSnapshot = validSnapshots.reduce<(typeof validSnapshots)[0] | null>(
+    (best, current) => {
+      const golden =
+        current.intelligence.powerStickers.filter((p) => p.level === "golden")
+          .length;
+      const bestGolden =
+        best?.intelligence.powerStickers.filter((p) => p.level === "golden")
+          .length ?? 0;
+      if (!best || golden > bestGolden) return current;
+      return best;
+    },
+    null,
+  );
+
+  const totalMembers = validSnapshots.reduce(
+    (sum, s) => sum + s.intelligence.market.memberCount,
+    0,
+  );
 
   const hasLists = stats.duplicateCount > 0 || stats.needCount > 0;
   const goldenCount =
-    intelligence?.powerStickers.filter((s) => s.level === "golden").length ?? 0;
+    heroSnapshot?.intelligence.powerStickers.filter((s) => s.level === "golden")
+      .length ?? 0;
+
+  const groupLabel =
+    groups.length === 0
+      ? null
+      : groups.length === 1
+        ? groups[0].name
+        : `${groups.length} grupos`;
 
   return (
     <div className="space-y-6">
@@ -55,15 +91,12 @@ export default async function HomePage() {
               ? "Pronto para trocar"
               : "Cadastre suas listas"}
         </h2>
-        {group ? (
+        {groups.length > 0 ? (
           <p className="mt-2 text-sm text-[#5f5f5f]">
-            Grupo ativo:{" "}
-            <strong className="text-[#1b1b1b]">{group.name}</strong>
-            {intelligence && intelligence.market.memberCount > 1 ? (
-              <>
-                {" "}
-                · {intelligence.market.memberCount} colecionadores no radar
-              </>
+            {groups.length === 1 ? "Grupo" : "Grupos"}:{" "}
+            <strong className="text-[#1b1b1b]">{groupLabel}</strong>
+            {totalMembers > 1 ? (
+              <> · {totalMembers} colecionadores no radar</>
             ) : null}
           </p>
         ) : (
@@ -76,12 +109,12 @@ export default async function HomePage() {
         )}
       </div>
 
-      {group && intelligence ? (
+      {heroSnapshot ? (
         <GroupIntelligenceHero
-          groupName={group.name}
-          memberCount={intelligence.market.memberCount}
-          powerStickers={intelligence.powerStickers}
-          chaseStickers={intelligence.chaseStickers}
+          groupName={heroSnapshot.group.name}
+          memberCount={heroSnapshot.intelligence.market.memberCount}
+          powerStickers={heroSnapshot.intelligence.powerStickers}
+          chaseStickers={heroSnapshot.intelligence.chaseStickers}
         />
       ) : null}
 
@@ -98,17 +131,17 @@ export default async function HomePage() {
           accent="green"
         />
         <StatCard
-          label="No grupo p/ você"
-          value={availableInGroup}
+          label="Nos grupos p/ você"
+          value={availableInGroups}
           accent="white"
         />
         {goldenCount > 0 ? (
           <StatCard label="Ouro do grupo" value={goldenCount} accent="yellow" />
         ) : null}
-        {intelligence && intelligence.hotCodes.length > 0 ? (
+        {heroSnapshot && heroSnapshot.intelligence.hotCodes.length > 0 ? (
           <StatCard
             label="Quentes no grupo"
-            value={intelligence.hotCodes.length}
+            value={heroSnapshot.intelligence.hotCodes.length}
             accent="yellow"
           />
         ) : null}
@@ -128,11 +161,11 @@ export default async function HomePage() {
         </div>
       ) : null}
 
-      {group && needs.length > 0 && availableInGroup > 0 ? (
+      {groups.length > 0 && needs.length > 0 && availableInGroups > 0 ? (
         <div className="rounded-lg border border-[#cfe9cf] bg-[#eef7ee] p-5">
-          <p className="text-sm font-semibold text-[#0f7b0f]">No seu grupo</p>
+          <p className="text-sm font-semibold text-[#0f7b0f]">Nos seus grupos</p>
           <p className="mt-2 text-2xl font-bold text-[#1b1b1b]">
-            {availableInGroup} das que você precisa estão com alguém do grupo
+            {availableInGroups} das que você precisa estão com alguém
           </p>
           <Link
             href="/trocas"

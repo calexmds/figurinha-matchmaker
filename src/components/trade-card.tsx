@@ -10,6 +10,7 @@ type TradeCardProps = {
   match: TradeMatch;
   rank: number;
   groupId: string;
+  groupName?: string;
   market?: GroupMarket;
   hasPendingWithPartner?: boolean;
 };
@@ -31,6 +32,7 @@ export function TradeCard({
   match,
   rank,
   groupId,
+  groupName,
   market,
   hasPendingWithPartner,
 }: TradeCardProps) {
@@ -59,6 +61,11 @@ export function TradeCard({
             <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#0067c0]">
               #{rank} melhor troca
             </p>
+            {groupName ? (
+              <span className="rounded-full bg-[#eaf3fb] px-2 py-0.5 text-[10px] font-semibold text-[#0067c0]">
+                {groupName}
+              </span>
+            ) : null}
             {hasGoldenGive ? (
               <span className="rounded-full bg-gradient-to-r from-[#fff3cc] to-[#ffe8a3] px-2 py-0.5 text-[10px] font-bold uppercase text-[#9a6700] ring-1 ring-[#d4a017]/40">
                 👑 Poder de ouro

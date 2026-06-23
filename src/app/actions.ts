@@ -274,6 +274,155 @@ export async function setActiveGroup(groupId: string) {
   revalidatePath("/trocas");
 }
 
+export async function updateGroupName(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const groupId = String(formData.get("groupId") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+
+  if (!name) return { error: "Informe o nome do grupo." };
+
+  const { data: group } = await supabase
+    .from("groups")
+    .select("id")
+    .eq("id", groupId)
+    .eq("owner_id", user.id)
+    .maybeSingle();
+
+  if (!group) return { error: "Só o criador pode editar o grupo." };
+
+  const { error } = await supabase
+    .from("groups")
+    .update({ name })
+    .eq("id", groupId);
+
+  if (error) return { error: "Não foi possível renomear o grupo." };
+
+  revalidatePath("/grupo");
+  revalidatePath("/trocas");
+  revalidatePath("/home");
+}
+
+export async function deleteGroup(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const groupId = String(formData.get("groupId") ?? "");
+
+  const { data: group } = await supabase
+    .from("groups")
+    .select("id")
+    .eq("id", groupId)
+    .eq("owner_id", user.id)
+    .maybeSingle();
+
+  if (!group) return { error: "Só o criador pode excluir o grupo." };
+
+  const { error } = await supabase.from("groups").delete().eq("id", groupId);
+
+  if (error) return { error: "Não foi possível excluir o grupo." };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("active_group_id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profile?.active_group_id === groupId) {
+    const { data: remaining } = await supabase
+      .from("group_members")
+      .select("group_id")
+      .eq("user_id", user.id)
+      .limit(1)
+      .maybeSingle();
+
+    await supabase
+      .from("profiles")
+      .update({ active_group_id: remaining?.group_id ?? null })
+      .eq("id", user.id);
+  }
+
+  revalidatePath("/grupo");
+  revalidatePath("/trocas");
+  revalidatePath("/home");
+}
+
+export async function removeGroupMember(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const groupId = String(formData.get("groupId") ?? "");
+  const memberId = String(formData.get("memberId") ?? "");
+
+  if (!groupId || !memberId) return { error: "Dados inválidos." };
+
+  const { data: group } = await supabase
+    .from("groups")
+    .select("owner_id")
+    .eq("id", groupId)
+    .maybeSingle();
+
+  if (!group) return { error: "Grupo não encontrado." };
+
+  const isOwner = group.owner_id === user.id;
+  const isSelf = memberId === user.id;
+
+  if (!isOwner && !isSelf) {
+    return { error: "Você não pode remover este participante." };
+  }
+
+  if (isOwner && isSelf) {
+    return { error: "O criador não pode sair. Exclua o grupo ou transfira antes." };
+  }
+
+  const { error } = await supabase
+    .from("group_members")
+    .delete()
+    .eq("group_id", groupId)
+    .eq("user_id", memberId);
+
+  if (error) return { error: "Não foi possível remover o participante." };
+
+  if (isSelf) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("active_group_id")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profile?.active_group_id === groupId) {
+      const { data: remaining } = await supabase
+        .from("group_members")
+        .select("group_id")
+        .eq("user_id", user.id)
+        .limit(1)
+        .maybeSingle();
+
+      await supabase
+        .from("profiles")
+        .update({ active_group_id: remaining?.group_id ?? null })
+        .eq("id", user.id);
+    }
+  }
+
+  revalidatePath("/grupo");
+  revalidatePath("/trocas");
+  revalidatePath("/home");
+}
+
 export async function getGroupTradeData(groupId: string) {
   const supabase = await createClient();
   const {

@@ -5,6 +5,12 @@ import {
   getCachedGroupTradeData,
   type GroupTradeData,
 } from "@/lib/group-trade-data";
+import {
+  deriveNeeds,
+  deriveTradeDuplicates,
+  ownedMapFromLegacy,
+  ownedMapFromList,
+} from "@/lib/stickers/collection";
 import type { GroupIntelligence } from "@/lib/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -15,7 +21,7 @@ function extractCode(
   return Array.isArray(sticker) ? sticker[0]?.code ?? null : sticker.code;
 }
 
-export async function getUserDuplicates(
+export async function getUserOwned(
   supabase: SupabaseClient,
   userId: string,
 ) {
@@ -35,30 +41,62 @@ export async function getUserDuplicates(
     .filter((item): item is { code: string; quantity: number } => !!item.code);
 }
 
-export async function getUserNeeds(supabase: SupabaseClient, userId: string) {
-  const { data } = await supabase
-    .from("user_needs")
-    .select("stickers(code)")
-    .eq("user_id", userId);
+/** @deprecated use getUserOwned */
+export async function getUserDuplicates(
+  supabase: SupabaseClient,
+  userId: string,
+) {
+  const owned = await getUserOwned(supabase, userId);
+  return deriveTradeDuplicates(ownedMapFromList(owned));
+}
 
-  return (data ?? [])
+export async function getUserNeeds(supabase: SupabaseClient, userId: string) {
+  const owned = await getUserOwned(supabase, userId);
+  return deriveNeeds(ownedMapFromList(owned));
+}
+
+export async function getUserCollection(
+  supabase: SupabaseClient,
+  userId: string,
+) {
+  const [ownedRows, legacyNeedsRows] = await Promise.all([
+    getUserOwned(supabase, userId),
+    supabase.from("user_needs").select("stickers(code)").eq("user_id", userId),
+  ]);
+
+  const legacyNeeds = (legacyNeedsRows.data ?? [])
     .map((row) =>
       extractCode(row.stickers as { code: string } | { code: string }[] | null),
     )
-    .filter((code): code is string => !!code)
-    .sort();
+    .filter((code): code is string => !!code);
+
+  const ownedMap =
+    legacyNeeds.length > 0
+      ? ownedMapFromLegacy(ownedRows, legacyNeeds)
+      : ownedMapFromList(ownedRows);
+
+  return {
+    owned: ownedMap,
+    ownedList: Object.entries(ownedMap).map(([code, quantity]) => ({
+      code,
+      quantity,
+    })),
+    duplicates: deriveTradeDuplicates(ownedMap),
+    needs: deriveNeeds(ownedMap),
+  };
 }
 
 export async function getUserTradeSummary(
   supabase: SupabaseClient,
   userId: string,
 ) {
-  const [duplicates, needs] = await Promise.all([
-    getUserDuplicates(supabase, userId),
-    getUserNeeds(supabase, userId),
-  ]);
+  const { ownedList, duplicates, needs } = await getUserCollection(
+    supabase,
+    userId,
+  );
 
   return {
+    owned: ownedList,
     duplicates,
     needs,
     stats: computeTradeStats(duplicates, needs),

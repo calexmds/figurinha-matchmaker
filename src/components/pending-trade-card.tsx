@@ -11,6 +11,9 @@ export function PendingTradeCard({ trade }: PendingTradeCardProps) {
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#9a6700]">
           Troca combinada · aguardando encontro
+          {trade.groupName ? (
+            <span className="ml-2 normal-case text-[#0067c0]">· {trade.groupName}</span>
+          ) : null}
         </p>
         <h3 className="mt-1 text-xl font-bold text-[#1b1b1b]">
           Com {trade.partnerName}

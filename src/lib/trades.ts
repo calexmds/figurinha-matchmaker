@@ -1,10 +1,17 @@
-import { revalidatePath } from "next/cache";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { revalidatePath } from "next/cache";
+import {
+  ownedMapFromList,
+  tradeableQuantity,
+  userNeedsCode,
+} from "@/lib/stickers/collection";
 
 export type TradeStatus = "pending" | "completed" | "cancelled";
 
 export type PendingTrade = {
   id: string;
+  groupId: string;
+  groupName: string;
   partnerId: string;
   partnerName: string;
   give: string[];
@@ -128,6 +135,69 @@ export async function getPendingTrades(
     const bucket = itemsByTrade.get(trade.id) ?? { give: [], receive: [] };
     return {
       id: trade.id,
+      groupId: groupId,
+      groupName: "",
+      partnerId: trade.partner_id,
+      partnerName: nameById.get(trade.partner_id) ?? "Colecionador",
+      give: bucket.give.sort(),
+      receive: bucket.receive.sort(),
+      createdAt: trade.created_at,
+    };
+  });
+}
+
+export async function getAllPendingTrades(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<PendingTrade[]> {
+  const { data: trades } = await supabase
+    .from("trades")
+    .select("id, partner_id, group_id, created_at, groups(name)")
+    .eq("user_id", userId)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false });
+
+  if (!trades?.length) return [];
+
+  const partnerIds = [...new Set(trades.map((t) => t.partner_id))];
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, name")
+    .in("id", partnerIds);
+
+  const nameById = new Map(
+    (profiles ?? []).map((p) => [p.id, p.name ?? "Colecionador"]),
+  );
+
+  const tradeIds = trades.map((t) => t.id);
+  const { data: items } = await supabase
+    .from("trade_items")
+    .select("trade_id, side, stickers(code)")
+    .in("trade_id", tradeIds);
+
+  const itemsByTrade = new Map<string, { give: string[]; receive: string[] }>();
+  for (const id of tradeIds) {
+    itemsByTrade.set(id, { give: [], receive: [] });
+  }
+
+  for (const item of items ?? []) {
+    const bucket = itemsByTrade.get(item.trade_id);
+    const code = extractCode(
+      item.stickers as { code: string } | { code: string }[] | null,
+    );
+    if (!bucket || !code) continue;
+    if (item.side === "give") bucket.give.push(code);
+    else bucket.receive.push(code);
+  }
+
+  return trades.map((trade) => {
+    const g = trade.groups as { name: string } | { name: string }[] | null;
+    const groupName = Array.isArray(g) ? (g[0]?.name ?? "Grupo") : (g?.name ?? "Grupo");
+    const bucket = itemsByTrade.get(trade.id) ?? { give: [], receive: [] };
+    return {
+      id: trade.id,
+      groupId: trade.group_id,
+      groupName,
       partnerId: trade.partner_id,
       partnerName: nameById.get(trade.partner_id) ?? "Colecionador",
       give: bucket.give.sort(),
@@ -202,28 +272,30 @@ export async function createPendingTrade(
   }
 
   const reservations = await getUserReservations(supabase, userId);
-  const duplicates = await supabase
+  const { data: ownedRows } = await supabase
     .from("user_stickers")
     .select("quantity, stickers(code)")
     .eq("user_id", userId)
     .gt("quantity", 0);
 
-  const dupByCode = new Map<string, number>();
-  for (const row of duplicates.data ?? []) {
-    const code = extractCode(
-      row.stickers as { code: string } | { code: string }[] | null,
-    );
-    if (code) dupByCode.set(code, row.quantity);
-  }
+  const ownedMap = ownedMapFromList(
+    (ownedRows ?? []).map((row) => ({
+      code:
+        extractCode(
+          row.stickers as { code: string } | { code: string }[] | null,
+        ) ?? "",
+      quantity: row.quantity,
+    })).filter((r) => r.code),
+  );
 
   const giveCount = new Map<string, number>();
   for (const code of giveCodes) {
     giveCount.set(code, (giveCount.get(code) ?? 0) + 1);
   }
   for (const [code, needed] of giveCount) {
-    const total = dupByCode.get(code) ?? 0;
+    const total = ownedMap[code.toUpperCase()] ?? 0;
     const reserved = reservations.give.get(code) ?? 0;
-    if (total - reserved < needed) {
+    if (tradeableQuantity(total, reserved) < needed) {
       return {
         ok: false,
         error: `Você não tem repetida disponível para ${code}.`,
@@ -231,24 +303,18 @@ export async function createPendingTrade(
     }
   }
 
-  const needsRows = await supabase
-    .from("user_needs")
-    .select("stickers(code)")
-    .eq("user_id", userId);
-
-  const needSet = new Set<string>();
-  for (const row of needsRows.data ?? []) {
-    const code = extractCode(
-      row.stickers as { code: string } | { code: string }[] | null,
-    );
-    if (code && !reservations.receive.has(code)) needSet.add(code);
-  }
-
   for (const code of receiveCodes) {
-    if (!needSet.has(code)) {
+    const upper = code.toUpperCase();
+    if (!userNeedsCode(ownedMap, upper)) {
       return {
         ok: false,
         error: `${code} não está na sua lista de preciso.`,
+      };
+    }
+    if (reservations.receive.has(upper)) {
+      return {
+        ok: false,
+        error: `${code} já está reservada em outra troca.`,
       };
     }
   }
@@ -363,6 +429,24 @@ export async function completePendingTrade(
           .eq("sticker_id", item.sticker_id);
       }
     } else {
+      const { data: row } = await supabase
+        .from("user_stickers")
+        .select("quantity")
+        .eq("user_id", userId)
+        .eq("sticker_id", item.sticker_id)
+        .maybeSingle();
+
+      const nextQty = (row?.quantity ?? 0) + item.quantity;
+      await supabase.from("user_stickers").upsert(
+        {
+          user_id: userId,
+          sticker_id: item.sticker_id,
+          quantity: nextQty,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,sticker_id" },
+      );
+
       await supabase
         .from("user_needs")
         .delete()

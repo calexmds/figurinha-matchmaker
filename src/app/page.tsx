@@ -62,8 +62,8 @@ export default async function LandingPage() {
             text: "Crie ou use o link de convite do WhatsApp.",
           },
           {
-            title: "2. Marque suas figurinhas",
-            text: "Toque para marcar repetidas e o que falta — em segundos.",
+            title: "2. Marque o que tem",
+            text: "Na aba Tenho, toque nas figurinhas que você possui.",
           },
           {
             title: "3. Veja quem combina",

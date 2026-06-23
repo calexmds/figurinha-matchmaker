@@ -1,5 +1,10 @@
 import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  deriveNeeds,
+  deriveTradeDuplicates,
+  ownedMapFromList,
+} from "@/lib/stickers/collection";
 
 export type GroupTradeData = {
   currentUserId: string;
@@ -24,9 +29,20 @@ type SnapshotMember = {
   user_id: string;
   name: string;
   avatar_url: string | null;
-  duplicates: Array<{ code: string; quantity: number }> | null;
-  needs: string[] | null;
+  owned?: Array<{ code: string; quantity: number }> | null;
+  duplicates?: Array<{ code: string; quantity: number }> | null;
+  needs?: string[] | null;
 };
+
+function parseOwned(raw: SnapshotMember["owned"]) {
+  if (!raw || !Array.isArray(raw)) return [];
+  return raw
+    .map((item) => ({
+      code: String(item.code ?? "").toUpperCase(),
+      quantity: Number(item.quantity) || 0,
+    }))
+    .filter((item) => item.code && item.quantity > 0);
+}
 
 function parseDuplicates(raw: SnapshotMember["duplicates"]) {
   if (!raw || !Array.isArray(raw)) return [];
@@ -46,18 +62,37 @@ function parseNeeds(raw: SnapshotMember["needs"]) {
     .sort();
 }
 
+function tradeListsFromMember(m: SnapshotMember) {
+  const ownedRows = parseOwned(m.owned);
+  if (ownedRows.length > 0 || m.owned != null) {
+    const ownedMap = ownedMapFromList(ownedRows);
+    return {
+      duplicates: deriveTradeDuplicates(ownedMap),
+      needs: deriveNeeds(ownedMap),
+    };
+  }
+
+  return {
+    duplicates: parseDuplicates(m.duplicates),
+    needs: parseNeeds(m.needs),
+  };
+}
+
 function buildFromMembers(
   members: SnapshotMember[],
   currentUserId: string,
   source: "rpc" | "client",
 ): GroupTradeData {
-  const parsed = members.map((m) => ({
-    userId: m.user_id,
-    name: m.name ?? "Colecionador",
-    avatarUrl: m.avatar_url ?? null,
-    duplicates: parseDuplicates(m.duplicates),
-    needs: parseNeeds(m.needs),
-  }));
+  const parsed = members.map((m) => {
+    const lists = tradeListsFromMember(m);
+    return {
+      userId: m.user_id,
+      name: m.name ?? "Colecionador",
+      avatarUrl: m.avatar_url ?? null,
+      duplicates: lists.duplicates,
+      needs: lists.needs,
+    };
+  });
 
   const current = parsed.find((m) => m.userId === currentUserId);
   const others = parsed.filter((m) => m.userId !== currentUserId);
@@ -131,42 +166,23 @@ async function fetchGroupTradeDataViaClient(
     .in("user_id", userIds)
     .gt("quantity", 0);
 
-  const { data: allUserNeeds, error: needsError } = await supabase
-    .from("user_needs")
-    .select("user_id, stickers(code)")
-    .in("user_id", userIds);
-
   if (stickersError) {
     console.error("[group-trade-data] stickers error", stickersError.message);
   }
-  if (needsError) {
-    console.error("[group-trade-data] needs error", needsError.message);
-  }
 
-  const duplicatesByUser = new Map<
+  const ownedByUser = new Map<
     string,
     Array<{ code: string; quantity: number }>
   >();
-  const needsByUser = new Map<string, string[]>();
 
   for (const row of allUserStickers ?? []) {
     const code = extractCode(
       row.stickers as { code: string } | { code: string }[] | null,
     );
     if (!code) continue;
-    const list = duplicatesByUser.get(row.user_id) ?? [];
+    const list = ownedByUser.get(row.user_id) ?? [];
     list.push({ code: code.toUpperCase(), quantity: row.quantity });
-    duplicatesByUser.set(row.user_id, list);
-  }
-
-  for (const row of allUserNeeds ?? []) {
-    const code = extractCode(
-      row.stickers as { code: string } | { code: string }[] | null,
-    );
-    if (!code) continue;
-    const list = needsByUser.get(row.user_id) ?? [];
-    list.push(code.toUpperCase());
-    needsByUser.set(row.user_id, list);
+    ownedByUser.set(row.user_id, list);
   }
 
   const members: SnapshotMember[] = memberRows.map((m) => {
@@ -179,8 +195,7 @@ async function fetchGroupTradeDataViaClient(
       user_id: m.user_id,
       name: p?.name ?? "Colecionador",
       avatar_url: p?.avatar_url ?? null,
-      duplicates: duplicatesByUser.get(m.user_id) ?? [],
-      needs: needsByUser.get(m.user_id) ?? [],
+      owned: ownedByUser.get(m.user_id) ?? [],
     };
   });
 
@@ -239,14 +254,14 @@ export function summarizeTradeDiagnostics(
     return {
       title: "Seu irmão ainda não cadastrou listas",
       detail:
-        "Ele precisa marcar repetidas e preciso em Figurinhas. Peça para abrir o app, ir em Figurinhas e salvar.",
+        "Ele precisa marcar o que tem em Figurinhas (aba Tenho). Peça para abrir o app e salvar.",
     };
   }
 
   if (currentDuplicates.length === 0 && currentNeeds.length === 0) {
     return {
       title: "Suas listas estão vazias",
-      detail: "Marque suas repetidas e o que precisa em Figurinhas para calcular trocas.",
+      detail: "Marque o que você tem em Figurinhas (aba Tenho) para calcular trocas.",
     };
   }
 

@@ -1,18 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { StickerEdit } from "@/lib/stickers/persist-edits";
 import type { GabaritoSection } from "@/lib/stickers/catalog";
+import {
+  countOwnedTypes,
+  countRepetidasTotal,
+  deriveNeeds,
+} from "@/lib/stickers/collection";
 import type { HeatLevel } from "@/lib/types";
 import { getHeatEmoji } from "@/lib/group-intelligence";
+import { TOTAL_STICKERS } from "@/lib/constants";
 
-type Mode = "dup" | "need";
+type ViewTab = "tenho" | "repetidas" | "preciso";
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 type GabaritoProps = {
   sections: GabaritoSection[];
-  initialDuplicates: Record<string, number>;
-  initialNeeds: string[];
+  initialOwned: Record<string, number>;
   initialReservedGive?: string[];
   initialReservedReceive?: string[];
   initialHeatLevels?: Record<string, HeatLevel>;
@@ -20,8 +25,7 @@ type GabaritoProps = {
 
 export function Gabarito({
   sections,
-  initialDuplicates,
-  initialNeeds,
+  initialOwned,
   initialReservedGive = [],
   initialReservedReceive = [],
   initialHeatLevels = {},
@@ -29,11 +33,8 @@ export function Gabarito({
   const reservedGive = useRef(new Set(initialReservedGive));
   const reservedReceive = useRef(new Set(initialReservedReceive));
   const heatLevels = useRef(initialHeatLevels);
-  const [mode, setMode] = useState<Mode>("dup");
-  const [dup, setDup] = useState<Record<string, number>>(initialDuplicates);
-  const [need, setNeed] = useState<Record<string, number>>(() =>
-    Object.fromEntries(initialNeeds.map((c) => [c, 1])),
-  );
+  const [tab, setTab] = useState<ViewTab>("tenho");
+  const [owned, setOwned] = useState<Record<string, number>>(initialOwned);
   const [openSection, setOpenSection] = useState<string | null>(
     sections[1]?.id ?? sections[0]?.id ?? null,
   );
@@ -46,6 +47,8 @@ export function Gabarito({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef(false);
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const derivedNeeds = useMemo(() => deriveNeeds(owned), [owned]);
 
   const postEdits = useCallback(
     async (edits: StickerEdit[], keepalive = false) => {
@@ -103,14 +106,13 @@ export function Gabarito({
   }, [flush]);
 
   const queueEdit = useCallback(
-    (kind: Mode, code: string, quantity: number) => {
-      pending.current.set(`${kind}:${code}`, { kind, code, quantity });
+    (code: string, quantity: number) => {
+      pending.current.set(`have:${code}`, {
+        kind: "have",
+        code,
+        quantity,
+      });
       setStatus("saving");
-      if (kind === "need") {
-        if (timer.current) clearTimeout(timer.current);
-        void flush();
-        return;
-      }
       if (pending.current.size >= 40) {
         void flush();
       } else {
@@ -135,55 +137,34 @@ export function Gabarito({
     };
   }, [flush]);
 
-  const tapCell = useCallback(
-    (code: string) => {
-      if (mode === "dup") {
-        setDup((prev) => {
-          const next = { ...prev, [code]: (prev[code] ?? 0) + 1 };
-          queueEdit("dup", code, next[code]);
-          return next;
-        });
-      } else {
-        setNeed((prev) => {
-          const isOn = (prev[code] ?? 0) > 0;
-          const next = { ...prev };
-          if (isOn) delete next[code];
-          else next[code] = 1;
-          queueEdit("need", code, isOn ? 0 : 1);
-          return next;
-        });
-      }
-    },
-    [mode, queueEdit],
-  );
-
-  const setDupQuantity = useCallback(
+  const setQuantity = useCallback(
     (code: string, quantity: number) => {
       const q = Math.max(0, Math.min(99, quantity));
-      setDup((prev) => {
+      setOwned((prev) => {
         const next = { ...prev };
         if (q === 0) delete next[code];
         else next[code] = q;
         return next;
       });
-      queueEdit("dup", code, q);
+      queueEdit(code, q);
     },
     [queueEdit],
   );
 
-  const removeNeed = useCallback(
+  const tapCell = useCallback(
     (code: string) => {
-      setNeed((prev) => {
-        const next = { ...prev };
-        delete next[code];
+      if (tab !== "tenho") return;
+      setOwned((prev) => {
+        const next = { ...prev, [code]: (prev[code] ?? 0) + 1 };
+        queueEdit(code, next[code]);
         return next;
       });
-      queueEdit("need", code, 0);
     },
-    [queueEdit],
+    [tab, queueEdit],
   );
 
   function handlePointerDown(code: string) {
+    if (tab !== "tenho") return;
     longPressFired.current = false;
     pressTimer.current = setTimeout(() => {
       longPressFired.current = true;
@@ -204,24 +185,17 @@ export function Gabarito({
     tapCell(code);
   }
 
-  const isMarked = (code: string) =>
-    mode === "dup" ? (dup[code] ?? 0) > 0 : (need[code] ?? 0) > 0;
-
-  const totalRepetidas = Object.values(dup).reduce((a, b) => a + b, 0);
-  const distinctDup = Object.keys(dup).length;
-  const needCount = Object.keys(need).length;
-
-  const totalCells = sections.reduce((a, s) => a + s.cells.length, 0);
-  const covered = mode === "dup" ? distinctDup : needCount;
+  const ownedTypes = countOwnedTypes(owned);
+  const repetidasTotal = countRepetidasTotal(owned);
+  const repetidasTypes = Object.values(owned).filter((q) => q > 1).length;
+  const needCount = derivedNeeds.length;
   const progressPct =
-    totalCells > 0 ? Math.round((covered / totalCells) * 100) : 0;
+    TOTAL_STICKERS > 0
+      ? Math.round((ownedTypes / TOTAL_STICKERS) * 100)
+      : 0;
 
-  const sectionCount = (section: GabaritoSection) =>
-    section.cells.filter((c) =>
-      mode === "dup" ? (dup[c.code] ?? 0) > 0 : (need[c.code] ?? 0) > 0,
-    ).length;
-
-  const accent = mode === "dup" ? "#0f7b0f" : "#0067c0";
+  const accent =
+    tab === "tenho" ? "#0067c0" : tab === "repetidas" ? "#0f7b0f" : "#9a6700";
 
   const normalize = (s: string) =>
     s
@@ -237,8 +211,32 @@ export function Gabarito({
       )
     : sections;
 
+  const cellVisible = (code: string) => {
+    const qty = owned[code] ?? 0;
+    if (tab === "tenho") return true;
+    if (tab === "repetidas") return qty > 1;
+    return qty < 1;
+  };
+
+  const sectionCount = (section: GabaritoSection) =>
+    section.cells.filter((c) => cellVisible(c.code)).length;
+
   const reservedCount =
     reservedGive.current.size + reservedReceive.current.size;
+
+  const statsLine =
+    tab === "tenho"
+      ? `${ownedTypes} de ${TOTAL_STICKERS} marcadas`
+      : tab === "repetidas"
+        ? `${repetidasTotal} repetida(s) · ${repetidasTypes} tipos`
+        : `Faltam ${needCount} de ${TOTAL_STICKERS}`;
+
+  const helperLine =
+    tab === "tenho"
+      ? "Toque para marcar que você tem (+1). Segure para ajustar a quantidade. O app calcula repetidas e preciso sozinho."
+      : tab === "repetidas"
+        ? "Somente leitura — figurinhas com mais de 1 cópia (extras para trocar)."
+        : "Somente leitura — figurinhas que ainda não estão marcadas em Tenho.";
 
   return (
     <div className="space-y-4">
@@ -255,53 +253,63 @@ export function Gabarito({
           .
         </div>
       ) : null}
-      {/* Mode toggle */}
+
       <div className="sticky top-[60px] z-10 -mx-4 border-b border-[#e6e6e6] bg-white px-4 py-2">
-        <div className="grid grid-cols-2 gap-1 rounded-lg border border-[#e6e6e6] bg-[#ededed] p-1">
-          <button
-            type="button"
-            onClick={() => setMode("dup")}
-            className={`min-h-10 rounded-md text-sm font-semibold transition ${
-              mode === "dup"
-                ? "bg-white text-[#0f7b0f] shadow-sm"
-                : "text-[#5f5f5f]"
-            }`}
-          >
-            Repetidas
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("need")}
-            className={`min-h-10 rounded-md text-sm font-semibold transition ${
-              mode === "need"
-                ? "bg-white text-[#0067c0] shadow-sm"
-                : "text-[#5f5f5f]"
-            }`}
-          >
-            Preciso
-          </button>
+        <div className="grid grid-cols-3 gap-1 rounded-lg border border-[#e6e6e6] bg-[#ededed] p-1">
+          {(
+            [
+              { id: "tenho" as const, label: "Tenho", editable: true },
+              { id: "repetidas" as const, label: "Repetidas", editable: false },
+              { id: "preciso" as const, label: "Preciso", editable: false },
+            ] as const
+          ).map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setTab(item.id)}
+              className={`min-h-10 rounded-md text-sm font-semibold transition ${
+                tab === item.id
+                  ? "bg-white text-[#0067c0] shadow-sm"
+                  : "text-[#5f5f5f]"
+              }`}
+              style={
+                tab === item.id
+                  ? {
+                      color:
+                        item.id === "repetidas"
+                          ? "#0f7b0f"
+                          : item.id === "preciso"
+                            ? "#9a6700"
+                            : "#0067c0",
+                    }
+                  : undefined
+              }
+            >
+              {item.label}
+              {!item.editable ? (
+                <span className="ml-1 text-[9px] font-normal opacity-60">👁</span>
+              ) : null}
+            </button>
+          ))}
         </div>
         <div className="mt-2 flex items-center justify-between text-xs">
-          <span className="font-medium text-[#5f5f5f]">
-            {mode === "dup"
-              ? `${totalRepetidas} repetida(s) · ${distinctDup} tipos`
-              : `Faltam ${needCount} de ${totalCells}`}
-          </span>
-          <SaveBadge status={status} />
+          <span className="font-medium text-[#5f5f5f]">{statsLine}</span>
+          {tab === "tenho" ? <SaveBadge status={status} /> : null}
         </div>
         {errorDetail ? (
           <p className="mt-1 rounded-md border border-[#f3c9c5] bg-[#fdf0ef] px-2 py-1.5 text-[11px] leading-4 text-[#c42b1c]">
             {errorDetail}
           </p>
         ) : null}
-        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[#e6e6e6]">
-          <div
-            className="h-full rounded-full transition-all"
-            style={{ width: `${progressPct}%`, background: accent }}
-          />
-        </div>
+        {tab === "tenho" ? (
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[#e6e6e6]">
+            <div
+              className="h-full rounded-full transition-all"
+              style={{ width: `${progressPct}%`, background: accent }}
+            />
+          </div>
+        ) : null}
 
-        {/* Search */}
         <div className="relative mt-2">
           <input
             type="text"
@@ -336,20 +344,15 @@ export function Gabarito({
         </div>
       </div>
 
-      <p className="text-xs leading-5 text-[#5f5f5f]">
-        {mode === "dup"
-          ? "Toque para marcar uma repetida. Toque de novo soma mais. Segure para ajustar a quantidade."
-          : "Toque para marcar o que falta. Toque de novo para desmarcar."}
-      </p>
+      <p className="text-xs leading-5 text-[#5f5f5f]">{helperLine}</p>
 
-      {Object.keys(initialHeatLevels).length > 0 ? (
+      {Object.keys(initialHeatLevels).length > 0 && tab !== "preciso" ? (
         <p className="text-[11px] leading-4 text-[#8a8a8a]">
           👑 ouro · 🔥 quente · ✨ procurada = demanda alta no grupo (poder de
           barganha).
         </p>
       ) : null}
 
-      {/* Sections */}
       <div className="space-y-2">
         {filteredSections.length === 0 ? (
           <p className="rounded-lg border border-[#e6e6e6] bg-white p-4 text-center text-sm text-[#5f5f5f]">
@@ -357,6 +360,10 @@ export function Gabarito({
           </p>
         ) : null}
         {filteredSections.map((section) => {
+          const visibleCells = section.cells.filter((c) => cellVisible(c.code));
+          if (visibleCells.length === 0 && (tab === "repetidas" || tab === "preciso")) {
+            return null;
+          }
           const isOpen = q ? true : openSection === section.id;
           const count = sectionCount(section);
           return (
@@ -402,20 +409,27 @@ export function Gabarito({
 
               {isOpen ? (
                 <div className="grid grid-cols-3 gap-2 border-t border-[#eee] p-3 sm:grid-cols-4">
-                  {section.cells.map((cell) => {
-                    const marked = isMarked(cell.code);
-                    const qty = dup[cell.code] ?? 0;
+                  {visibleCells.map((cell) => {
+                    const qty = owned[cell.code] ?? 0;
+                    const marked =
+                      tab === "tenho"
+                        ? qty > 0
+                        : tab === "repetidas"
+                          ? qty > 1
+                          : qty < 1;
                     const reservedOut =
-                      mode === "dup" && reservedGive.current.has(cell.code);
+                      tab === "tenho" &&
+                      qty > 1 &&
+                      reservedGive.current.has(cell.code);
                     const reservedIn =
-                      mode === "need" &&
+                      tab === "preciso" &&
                       reservedReceive.current.has(cell.code);
                     const heat = heatLevels.current[cell.code];
                     const showHeat =
-                      mode === "dup" &&
+                      tab !== "preciso" &&
                       heat &&
                       heat !== "common" &&
-                      (dup[cell.code] ?? 0) > 0;
+                      qty > 0;
                     const heatRing =
                       heat === "golden"
                         ? "ring-2 ring-[#d4a017] ring-offset-1"
@@ -430,10 +444,15 @@ export function Gabarito({
                         ? "ring-2 ring-dashed ring-[#7b5ea7] ring-offset-1"
                         : "";
                     const activeRing = reservedRing || heatRing;
+                    const badgeQty =
+                      tab === "repetidas" ? qty - 1 : tab === "tenho" ? qty : 0;
+                    const readOnly = tab !== "tenho";
+
                     return (
                       <button
                         key={cell.code}
                         type="button"
+                        disabled={readOnly}
                         onPointerDown={() => handlePointerDown(cell.code)}
                         onPointerUp={handlePointerEnd}
                         onPointerLeave={handlePointerEnd}
@@ -445,7 +464,7 @@ export function Gabarito({
                             : activeRing
                               ? `border-[#e0e0e0] bg-[#fafafa] text-[#5f5f5f] ${activeRing}`
                               : "border-[#e0e0e0] bg-[#fafafa] text-[#5f5f5f]"
-                        }`}
+                        } ${readOnly ? "cursor-default opacity-95" : ""}`}
                         style={marked ? { background: accent } : undefined}
                       >
                         <span className="text-[10px] font-bold leading-tight tracking-tight sm:text-[11px]">
@@ -459,9 +478,9 @@ export function Gabarito({
                             {getHeatEmoji(heat)}
                           </span>
                         ) : null}
-                        {mode === "dup" && qty > 1 ? (
+                        {badgeQty > 1 || (tab === "repetidas" && badgeQty >= 1) ? (
                           <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#1b1b1b] px-1 text-[10px] font-bold text-white">
-                            ×{qty}
+                            ×{tab === "repetidas" ? badgeQty : qty}
                           </span>
                         ) : null}
                       </button>
@@ -472,23 +491,28 @@ export function Gabarito({
             </div>
           );
         })}
+        {tab === "repetidas" &&
+        filteredSections.every(
+          (s) => s.cells.filter((c) => (owned[c.code] ?? 0) > 1).length === 0,
+        ) ? (
+          <p className="rounded-lg border border-[#e6e6e6] bg-white p-6 text-center text-sm text-[#5f5f5f]">
+            Nenhuma repetida ainda. Marque figurinhas com quantidade 2 ou mais na
+            aba Tenho.
+          </p>
+        ) : null}
+        {tab === "preciso" && needCount === TOTAL_STICKERS ? (
+          <p className="rounded-lg border border-[#ecdfc0] bg-[#fbf6ea] p-6 text-center text-sm text-[#5f5f5f]">
+            Marque o que você já tem na aba Tenho — o Preciso será calculado
+            automaticamente.
+          </p>
+        ) : null}
       </div>
 
-      {/* Long-press sheet */}
       {sheetCode ? (
         <CellSheet
           code={sheetCode}
-          mode={mode}
-          quantity={dup[sheetCode] ?? 0}
-          isNeeded={(need[sheetCode] ?? 0) > 0}
-          onSetQuantity={(q) => setDupQuantity(sheetCode, q)}
-          onToggleNeed={() => {
-            if ((need[sheetCode] ?? 0) > 0) removeNeed(sheetCode);
-            else {
-              setNeed((prev) => ({ ...prev, [sheetCode]: 1 }));
-              queueEdit("need", sheetCode, 1);
-            }
-          }}
+          quantity={owned[sheetCode] ?? 0}
+          onSetQuantity={(q) => setQuantity(sheetCode, q)}
           onClose={() => setSheetCode(null)}
         />
       ) : null}
@@ -508,19 +532,13 @@ function SaveBadge({ status }: { status: SaveStatus }) {
 
 function CellSheet({
   code,
-  mode,
   quantity,
-  isNeeded,
   onSetQuantity,
-  onToggleNeed,
   onClose,
 }: {
   code: string;
-  mode: Mode;
   quantity: number;
-  isNeeded: boolean;
   onSetQuantity: (q: number) => void;
-  onToggleNeed: () => void;
   onClose: () => void;
 }) {
   return (
@@ -534,64 +552,40 @@ function CellSheet({
       >
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-[#d0d0d0]" />
         <p className="text-center text-lg font-bold text-[#1b1b1b]">{code}</p>
-
-        {mode === "dup" ? (
-          <>
-            <p className="mt-1 text-center text-sm text-[#5f5f5f]">
-              Quantas você tem repetidas?
-            </p>
-            <div className="mt-5 flex items-center justify-center gap-5">
-              <button
-                type="button"
-                onClick={() => onSetQuantity(quantity - 1)}
-                className="flex h-12 w-12 items-center justify-center rounded-full border border-[#d0d0d0] text-2xl font-bold text-[#1b1b1b] active:bg-[#f0f0f0]"
-              >
-                −
-              </button>
-              <span className="min-w-12 text-center text-3xl font-extrabold text-[#0f7b0f]">
-                {quantity}
-              </span>
-              <button
-                type="button"
-                onClick={() => onSetQuantity(quantity + 1)}
-                className="flex h-12 w-12 items-center justify-center rounded-full bg-[#0f7b0f] text-2xl font-bold text-white active:bg-[#0c640c]"
-              >
-                +
-              </button>
-            </div>
-            {quantity > 0 ? (
-              <button
-                type="button"
-                onClick={() => {
-                  onSetQuantity(0);
-                  onClose();
-                }}
-                className="mt-5 w-full rounded-md py-2 text-sm font-medium text-[#c42b1c]"
-              >
-                Remover
-              </button>
-            ) : null}
-          </>
-        ) : (
-          <>
-            <p className="mt-1 text-center text-sm text-[#5f5f5f]">
-              Você precisa desta figurinha?
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                onToggleNeed();
-                onClose();
-              }}
-              className={`mt-5 w-full rounded-md py-3 text-sm font-semibold text-white ${
-                isNeeded ? "bg-[#c42b1c]" : "bg-[#0067c0]"
-              }`}
-            >
-              {isNeeded ? "Remover da lista" : "Marcar como preciso"}
-            </button>
-          </>
-        )}
-
+        <p className="mt-1 text-center text-sm text-[#5f5f5f]">
+          Quantas cópias você tem?
+        </p>
+        <div className="mt-5 flex items-center justify-center gap-5">
+          <button
+            type="button"
+            onClick={() => onSetQuantity(quantity - 1)}
+            className="flex h-12 w-12 items-center justify-center rounded-full border border-[#d0d0d0] text-2xl font-bold text-[#1b1b1b] active:bg-[#f0f0f0]"
+          >
+            −
+          </button>
+          <span className="min-w-12 text-center text-3xl font-extrabold text-[#0067c0]">
+            {quantity}
+          </span>
+          <button
+            type="button"
+            onClick={() => onSetQuantity(quantity + 1)}
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-[#0067c0] text-2xl font-bold text-white active:bg-[#005aa8]"
+          >
+            +
+          </button>
+        </div>
+        {quantity > 0 ? (
+          <button
+            type="button"
+            onClick={() => {
+              onSetQuantity(0);
+              onClose();
+            }}
+            className="mt-5 w-full rounded-md py-2 text-sm font-medium text-[#c42b1c]"
+          >
+            Não tenho esta figurinha
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={onClose}
