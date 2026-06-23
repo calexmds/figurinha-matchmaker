@@ -1,7 +1,8 @@
 "use client";
 
-import Link from "next/link";
+import { useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { useNavPending } from "@/components/nav-pending";
 
 const tabs = [
   {
@@ -77,10 +78,17 @@ const tabs = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  const { isPending, navigate } = useNavPending();
+
+  useEffect(() => {
+    if (isPending) {
+      document.documentElement.style.scrollBehavior = "auto";
+    }
+  }, [isPending]);
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-[#e6e6e6] bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-2px_8px_rgba(0,0,0,0.06)]"
+      className={`fixed inset-x-0 bottom-0 z-30 border-t border-[#e6e6e6] bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-2px_8px_rgba(0,0,0,0.06)] transition-opacity ${isPending ? "opacity-95" : ""}`}
       aria-label="Navegação principal"
     >
       <div className="mx-auto grid max-w-lg grid-cols-4">
@@ -89,20 +97,24 @@ export function BottomNav() {
             pathname === tab.href || pathname.startsWith(`${tab.href}/`);
 
           return (
-            <Link
+            <button
               key={tab.href}
-              href={tab.href}
+              type="button"
+              onClick={() => {
+                if (!active) navigate(tab.href);
+              }}
+              disabled={isPending && !active}
               className={`flex min-h-16 flex-col items-center justify-center gap-1 px-2 py-2 transition ${
                 active
                   ? "text-[#0067c0]"
-                  : "text-[#8a8a8a] active:text-[#5f5f5f]"
+                  : "text-[#8a8a8a] active:text-[#5f5f5f] disabled:opacity-60"
               }`}
             >
               {tab.icon(active)}
               <span className="text-[10px] font-semibold tracking-wide">
                 {tab.label}
               </span>
-            </Link>
+            </button>
           );
         })}
       </div>

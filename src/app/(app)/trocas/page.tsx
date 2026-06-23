@@ -4,7 +4,7 @@ import { TradeCard } from "@/components/trade-card";
 import { PendingTradeCard } from "@/components/pending-trade-card";
 import { computeTradeMatches } from "@/lib/match";
 import { getActiveGroup, getUserTradeSummary } from "@/lib/data";
-import { getGroupTradeData } from "@/app/actions";
+import { getCachedGroupTradeData, summarizeTradeDiagnostics } from "@/lib/group-trade-data";
 import {
   applyReservationsToLists,
   getPendingTrades,
@@ -15,7 +15,6 @@ import {
   membersFromTradeData,
 } from "@/lib/group-intelligence";
 import { GroupIntelligenceHero } from "@/components/group-intelligence-hero";
-import { summarizeTradeDiagnostics } from "@/lib/group-trade-data";
 
 export default async function TradesPage({
   searchParams,
@@ -47,8 +46,12 @@ export default async function TradesPage({
     );
   }
 
-  const { stats } = await getUserTradeSummary(supabase, user.id);
-  const pendingTrades = await getPendingTrades(supabase, user.id, group.id);
+  const [{ stats }, pendingTrades, tradeData, reservations] = await Promise.all([
+    getUserTradeSummary(supabase, user.id),
+    getPendingTrades(supabase, user.id, group.id),
+    getCachedGroupTradeData(supabase, group.id, user.id),
+    getUserReservations(supabase, user.id),
+  ]);
   const pendingPartnerIds = new Set(pendingTrades.map((t) => t.partnerId));
 
   if (
@@ -72,9 +75,6 @@ export default async function TradesPage({
       </div>
     );
   }
-
-  const tradeData = await getGroupTradeData(group.id);
-  const reservations = await getUserReservations(supabase, user.id);
 
   const intelligence = tradeData
     ? buildGroupIntelligence(

@@ -1,8 +1,10 @@
 import { computeTradeStats } from "@/lib/match";
+import { buildGroupIntelligence } from "@/lib/group-intelligence";
 import {
-  buildGroupIntelligence,
-} from "@/lib/group-intelligence";
-import { fetchGroupTradeData } from "@/lib/group-trade-data";
+  countNeedsAvailableFromTradeData,
+  getCachedGroupTradeData,
+  type GroupTradeData,
+} from "@/lib/group-trade-data";
 import type { GroupIntelligence } from "@/lib/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -51,8 +53,10 @@ export async function getUserTradeSummary(
   supabase: SupabaseClient,
   userId: string,
 ) {
-  const duplicates = await getUserDuplicates(supabase, userId);
-  const needs = await getUserNeeds(supabase, userId);
+  const [duplicates, needs] = await Promise.all([
+    getUserDuplicates(supabase, userId),
+    getUserNeeds(supabase, userId),
+  ]);
 
   return {
     duplicates,
@@ -113,15 +117,17 @@ export async function countNeedsAvailableInGroup(
   needs: string[],
 ) {
   if (needs.length === 0) return 0;
-
-  const tradeData = await fetchGroupTradeData(supabase, groupId, userId);
+  const tradeData = await getCachedGroupTradeData(supabase, groupId, userId);
   if (!tradeData?.members.length) return 0;
+  return countNeedsAvailableFromTradeData(tradeData, needs);
+}
 
-  const duplicateCodes = new Set(
-    tradeData.members.flatMap((m) => m.duplicates.map((d) => d.code)),
-  );
-
-  return needs.filter((code) => duplicateCodes.has(code.toUpperCase())).length;
+export async function getGroupTradeSnapshot(
+  supabase: SupabaseClient,
+  groupId: string,
+  userId: string,
+): Promise<GroupTradeData | null> {
+  return getCachedGroupTradeData(supabase, groupId, userId);
 }
 
 export async function getGroupIntelligence(
@@ -129,7 +135,7 @@ export async function getGroupIntelligence(
   groupId: string,
   userId: string,
 ): Promise<GroupIntelligence | null> {
-  const tradeData = await fetchGroupTradeData(supabase, groupId, userId);
+  const tradeData = await getCachedGroupTradeData(supabase, groupId, userId);
   if (!tradeData) return null;
 
   const snapshots = [

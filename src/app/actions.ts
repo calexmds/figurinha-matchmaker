@@ -282,8 +282,8 @@ export async function getGroupTradeData(groupId: string) {
 
   if (!user) return null;
 
-  const { fetchGroupTradeData } = await import("@/lib/group-trade-data");
-  return fetchGroupTradeData(supabase, groupId, user.id);
+  const { getCachedGroupTradeData } = await import("@/lib/group-trade-data");
+  return getCachedGroupTradeData(supabase, groupId, user.id);
 }
 
 export async function combineTrade(formData: FormData) {

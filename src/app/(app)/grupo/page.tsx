@@ -9,10 +9,13 @@ import { getActiveGroup } from "@/lib/data";
 export default async function GroupPage() {
   const { supabase, user, profile } = await requireUser();
 
-  const { data: memberships } = await supabase
-    .from("group_members")
-    .select("group_id, groups(id, name, invite_code, owner_id)")
-    .eq("user_id", user.id);
+  const [{ data: memberships }, activeGroup] = await Promise.all([
+    supabase
+      .from("group_members")
+      .select("group_id, groups(id, name, invite_code, owner_id)")
+      .eq("user_id", user.id),
+    getActiveGroup(supabase, user.id, profile?.active_group_id ?? null),
+  ]);
 
   const groups = (memberships ?? [])
     .map((m) => {
@@ -23,12 +26,6 @@ export default async function GroupPage() {
       return Array.isArray(g) ? g[0] : g;
     })
     .filter(Boolean);
-
-  const activeGroup = await getActiveGroup(
-    supabase,
-    user.id,
-    profile?.active_group_id ?? null,
-  );
 
   const memberRows = activeGroup
     ? await supabase

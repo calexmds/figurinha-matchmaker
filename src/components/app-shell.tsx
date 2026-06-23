@@ -3,17 +3,34 @@
 import { usePathname } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
 import { BottomNav } from "@/components/bottom-nav";
+import {
+  NavPendingProvider,
+  NavProgressBar,
+  usePrefetchAppRoutes,
+} from "@/components/nav-pending";
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+function AppShellInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  usePrefetchAppRoutes();
 
   return (
     <div className="flex min-h-dvh flex-col bg-[#f3f3f3]">
-      <AppHeader pathname={pathname} />
+      <header className="relative sticky top-0 z-20">
+        <AppHeader pathname={pathname} />
+        <NavProgressBar />
+      </header>
       <main className="mx-auto w-full max-w-lg flex-1 px-4 py-4 pb-28">
         {children}
       </main>
       <BottomNav />
     </div>
+  );
+}
+
+export function AppShell({ children }: { children: React.ReactNode }) {
+  return (
+    <NavPendingProvider>
+      <AppShellInner>{children}</AppShellInner>
+    </NavPendingProvider>
   );
 }

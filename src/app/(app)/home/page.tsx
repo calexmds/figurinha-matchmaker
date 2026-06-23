@@ -6,35 +6,34 @@ import { GroupIntelligenceHero } from "@/components/group-intelligence-hero";
 import { WhatsAppShareButton } from "@/components/whatsapp-share";
 import { buildProfileMessage } from "@/lib/whatsapp";
 import {
-  countNeedsAvailableInGroup,
-  getActiveGroup,
-  getGroupIntelligence,
-  getUserTradeSummary,
-} from "@/lib/data";
+  buildGroupIntelligence,
+  membersFromTradeData,
+} from "@/lib/group-intelligence";
+import { getActiveGroup, getUserTradeSummary } from "@/lib/data";
+import {
+  countNeedsAvailableFromTradeData,
+  getCachedGroupTradeData,
+} from "@/lib/group-trade-data";
 
 export default async function HomePage() {
   const { supabase, user, profile } = await requireUser();
-  const { duplicates, needs, stats } = await getUserTradeSummary(
-    supabase,
-    user.id,
-  );
-  const group = await getActiveGroup(
-    supabase,
-    user.id,
-    profile?.active_group_id ?? null,
-  );
 
-  const intelligence =
-    group ? await getGroupIntelligence(supabase, group.id, user.id) : null;
+  const [{ duplicates, needs, stats }, group] = await Promise.all([
+    getUserTradeSummary(supabase, user.id),
+    getActiveGroup(supabase, user.id, profile?.active_group_id ?? null),
+  ]);
+
+  const tradeData = group
+    ? await getCachedGroupTradeData(supabase, group.id, user.id)
+    : null;
+
+  const intelligence = tradeData
+    ? buildGroupIntelligence(membersFromTradeData(tradeData), user.id)
+    : null;
 
   const availableInGroup =
-    group && needs.length > 0
-      ? await countNeedsAvailableInGroup(
-          supabase,
-          group.id,
-          user.id,
-          needs,
-        )
+    tradeData && needs.length > 0
+      ? countNeedsAvailableFromTradeData(tradeData, needs)
       : 0;
 
   const hasLists = stats.duplicateCount > 0 || stats.needCount > 0;

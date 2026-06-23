@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type GroupTradeData = {
@@ -199,6 +200,20 @@ export async function fetchGroupTradeData(
   if (viaRpc) return viaRpc;
 
   return fetchGroupTradeDataViaClient(supabase, groupId, currentUserId);
+}
+
+/** Dedupes RPC dentro do mesmo request (ex.: home + intelligence). */
+export const getCachedGroupTradeData = cache(fetchGroupTradeData);
+
+export function countNeedsAvailableFromTradeData(
+  tradeData: GroupTradeData,
+  needs: string[],
+) {
+  if (needs.length === 0) return 0;
+  const duplicateCodes = new Set(
+    tradeData.members.flatMap((m) => m.duplicates.map((d) => d.code)),
+  );
+  return needs.filter((code) => duplicateCodes.has(code.toUpperCase())).length;
 }
 
 export function summarizeTradeDiagnostics(

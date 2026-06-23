@@ -87,3 +87,16 @@ select {
 .animate-golden-pulse {
   animation: golden-pulse 2.5s ease-in-out infinite;
 }
+
+@keyframes nav-progress-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+.nav-progress-indeterminate {
+  animation: nav-progress-slide 0.9s ease-in-out infinite;
+}
