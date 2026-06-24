@@ -1,10 +1,8 @@
-import { combineTrade } from "@/app/actions";
+import { TradeProposePanel } from "@/components/trade-propose-panel";
 import type { TradeMatch } from "@/lib/types";
 import type { GroupMarket } from "@/lib/group-intelligence";
 import { getMarketInfo } from "@/lib/group-intelligence";
 import { StickerChipList } from "@/components/sticker-heat-badge";
-import { WhatsAppShareButton } from "@/components/whatsapp-share";
-import { buildTradeMessage } from "@/lib/whatsapp";
 
 type TradeCardProps = {
   match: TradeMatch;
@@ -13,6 +11,8 @@ type TradeCardProps = {
   groupName?: string;
   market?: GroupMarket;
   hasPendingWithPartner?: boolean;
+  editGivePool?: string[];
+  editReceivePool?: string[];
 };
 
 function marketLevelsForCodes(codes: string[], market?: GroupMarket) {
@@ -35,6 +35,8 @@ export function TradeCard({
   groupName,
   market,
   hasPendingWithPartner,
+  editGivePool = match.give,
+  editReceivePool = match.receive,
 }: TradeCardProps) {
   const hasGoldenGive =
     market &&
@@ -126,37 +128,18 @@ export function TradeCard({
       </div>
 
       {match.receiveCount > 0 || match.giveCount > 0 ? (
-        <div className="mt-4 flex flex-col gap-2">
-          {hasPendingWithPartner ? (
-            <p className="rounded-md border border-[#ecdfc0] bg-[#fffbf0] px-4 py-3 text-sm text-[#9a6700]">
-              Já existe uma proposta ou troca aberta com {match.name.split(" ")[0]} neste grupo.
-            </p>
-          ) : (
-            <form action={combineTrade}>
-              <input type="hidden" name="groupId" value={groupId} />
-              <input type="hidden" name="partnerId" value={match.userId} />
-              <input type="hidden" name="give" value={match.give.join(",")} />
-              <input
-                type="hidden"
-                name="receive"
-                value={match.receive.join(",")}
-              />
-              <button
-                type="submit"
-                className={`min-h-11 w-full rounded-md px-4 py-3 text-sm font-semibold text-white active:opacity-90 ${
-                  hasGoldenGive
-                    ? "bg-gradient-to-r from-[#9a6700] to-[#c45c00] shadow-md"
-                    : "bg-[#0067c0] active:bg-[#005aa8]"
-                }`}
-              >
-                {hasGoldenGive ? "Combinar troca de ouro" : "Combinar esta troca"}
-              </button>
-            </form>
-          )}
-          <WhatsAppShareButton
-            message={buildTradeMessage(match.name, match.receive, match.give)}
-            label={`Combinar com ${match.name.split(" ")[0]} no WhatsApp`}
-            className="w-full"
+        <div className="mt-4">
+          <TradeProposePanel
+            groupId={groupId}
+            partnerId={match.userId}
+            partnerName={match.name}
+            suggestedGive={match.give}
+            suggestedReceive={match.receive}
+            givePool={editGivePool}
+            receivePool={editReceivePool}
+            market={market}
+            hasPendingWithPartner={hasPendingWithPartner}
+            accent={hasGoldenGive ? "golden" : "default"}
           />
         </div>
       ) : null}

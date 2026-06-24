@@ -242,6 +242,8 @@ export default async function TradesPage({
                 groupId={match.groupId}
                 groupName={match.groupName}
                 market={match.market}
+                editGivePool={match.editGivePool}
+                editReceivePool={match.editReceivePool}
                 hasPendingWithPartner={pendingPartnerKeys.has(
                   `${match.groupId}:${match.userId}`,
                 )}

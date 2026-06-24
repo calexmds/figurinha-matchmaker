@@ -119,6 +119,32 @@ function selectBalancedSubset(
   };
 }
 
+/** Códigos que você pode incluir ao montar uma proposta manual com este parceiro. */
+export function computeTradeEditPools(
+  availableDuplicates: Array<{ code: string; quantity: number }>,
+  availableNeeds: string[],
+  partnerDuplicates: Array<{ code: string; quantity: number }>,
+  partnerNeeds: string[],
+): { givePool: string[]; receivePool: string[] } {
+  const partnerNeedSet = new Set(
+    partnerNeeds.map((code) => code.toUpperCase()),
+  );
+  const partnerDupSet = new Set(
+    partnerDuplicates.map((item) => item.code.toUpperCase()),
+  );
+
+  const givePool = availableDuplicates
+    .filter((item) => partnerNeedSet.has(item.code.toUpperCase()))
+    .map((item) => item.code)
+    .sort((a, b) => a.localeCompare(b, "pt-BR"));
+
+  const receivePool = availableNeeds
+    .filter((code) => partnerDupSet.has(code.toUpperCase()))
+    .sort((a, b) => a.localeCompare(b, "pt-BR"));
+
+  return { givePool, receivePool };
+}
+
 function scoreBalancedTrade(
   receive: string[],
   give: string[],

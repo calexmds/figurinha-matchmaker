@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { computeTradeMatches } from "@/lib/match";
+import { computeTradeMatches, computeTradeEditPools } from "@/lib/match";
 import {
   buildGroupIntelligence,
   membersFromTradeData,
@@ -19,6 +19,8 @@ export type TaggedTradeMatch = TradeMatch & {
   groupId: string;
   groupName: string;
   market?: GroupMarket;
+  editGivePool: string[];
+  editReceivePool: string[];
 };
 
 export type AllGroupsTradeResult = {
@@ -93,12 +95,25 @@ export async function computeAllGroupMatches(
         groupName: group.name,
         memberCount: tradeData.meta.memberCount,
         market: intelligence.market,
-        matches: groupMatches.map((m) => ({
-          ...m,
-          groupId: group.id,
-          groupName: group.name,
-          market: intelligence.market,
-        })),
+        matches: groupMatches.map((m) => {
+          const partner = tradeData.members.find((member) => member.userId === m.userId);
+          const pools = partner
+            ? computeTradeEditPools(
+                availableDuplicates,
+                availableNeeds,
+                partner.duplicates,
+                partner.needs,
+              )
+            : { givePool: [], receivePool: [] };
+          return {
+            ...m,
+            groupId: group.id,
+            groupName: group.name,
+            market: intelligence.market,
+            editGivePool: pools.givePool,
+            editReceivePool: pools.receivePool,
+          };
+        }),
       };
     }),
   );
