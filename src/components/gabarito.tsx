@@ -14,6 +14,12 @@ import {
 import type { CollectionEntryMode, HeatLevel } from "@/lib/types";
 import { getHeatEmoji } from "@/lib/group-intelligence";
 import { TOTAL_STICKERS } from "@/lib/constants";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Callout } from "@/components/ui/callout";
+import { Button } from "@/components/ui/button";
+import { ChevronIcon, EyeIcon, Sheet } from "@/components/ui/sheet";
+import { getInputClassName } from "@/components/ui/input";
+import { cn } from "@/lib/cn";
 
 type ViewTab = "tenho" | "repetidas" | "preciso";
 type SaveStatus = "idle" | "saving" | "saved" | "error";
@@ -336,76 +342,64 @@ export function Gabarito({
   return (
     <div className="space-y-4">
       {sparse ? (
-        <div className="rounded-xl border border-[#0f7b0f]/25 bg-gradient-to-r from-[#f4fbf4] to-white px-4 py-3">
-          <p className="text-xs font-bold uppercase tracking-wide text-[#0f7b0f]">
-            Modo álbum quase completo
-          </p>
-          <p className="mt-1 text-sm leading-5 text-[#5f5f5f]">
-            Comece em <strong className="text-[#9a6700]">Preciso</strong> (o que
-            falta) e depois{" "}
-            <strong className="text-[#0f7b0f]">Repetidas</strong>. O resto já
-            conta como no álbum.
-          </p>
-        </div>
+        <Callout variant="success" title="Modo álbum quase completo" className="px-4 py-3">
+          Comece em <strong className="text-win-amber">Preciso</strong> (o que falta) e
+          depois <strong className="text-win-green">Repetidas</strong>. O resto já conta
+          como no álbum.
+        </Callout>
       ) : null}
 
       {reservedCount > 0 ? (
-        <div className="rounded-lg border border-dashed border-[#d4a017] bg-[#fffbf0] px-4 py-3 text-sm text-[#9a6700]">
+        <Callout variant="warning" className="px-4 py-3">
           <strong>{reservedCount}</strong> figurinha
           {reservedCount === 1 ? "" : "s"} em troca combinada — borda{" "}
-          <span className="font-semibold text-[#9a6700]">âmbar</span> (entrega) ou{" "}
-          <span className="font-semibold text-[#7b5ea7]">lilás</span> (recebe).
-          Confirme em{" "}
+          <span className="font-semibold text-win-amber">âmbar</span> (entrega) ou{" "}
+          <span className="font-semibold text-reserve">lilás</span> (recebe). Confirme em{" "}
           <a href="/trocas" className="font-semibold underline">
             Trocas
           </a>
           .
-        </div>
+        </Callout>
       ) : null}
 
-      <div className="sticky top-[60px] z-10 -mx-4 border-b border-[#e6e6e6] bg-white px-4 py-2">
-        <div className="grid grid-cols-3 gap-1 rounded-lg border border-[#e6e6e6] bg-[#ededed] p-1">
+      <div className="fluent-chrome sticky top-[var(--header-height)] z-10 -mx-4 border-b border-line px-4 py-2">
+        <div className="grid grid-cols-3 gap-1 rounded-xl border border-line bg-mica p-1">
           {tabConfig.map((item) => (
             <button
               key={item.id}
               type="button"
               onClick={() => setTab(item.id)}
-              className={`min-h-10 rounded-md text-sm font-semibold transition ${
+              className={cn(
+                "min-h-10 rounded-lg text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
                 tab === item.id
-                  ? "bg-white text-[#0067c0] shadow-sm"
-                  : "text-[#5f5f5f]"
-              }`}
-              style={
-                tab === item.id
-                  ? {
-                      color:
-                        item.id === "repetidas"
-                          ? "#0f7b0f"
-                          : item.id === "preciso"
-                            ? "#9a6700"
-                            : "#0067c0",
-                    }
-                  : undefined
-              }
+                  ? "bg-card shadow-sm"
+                  : "text-ink-soft",
+                tab === item.id &&
+                  (item.id === "repetidas"
+                    ? "text-win-green"
+                    : item.id === "preciso"
+                      ? "text-win-amber"
+                      : "text-accent"),
+              )}
             >
               {item.label}
               {!item.editable ? (
-                <span className="ml-1 text-[9px] font-normal opacity-60">👁</span>
+                <EyeIcon className="ml-1 inline opacity-60" />
               ) : null}
             </button>
           ))}
         </div>
         <div className="mt-2 flex items-center justify-between text-xs">
-          <span className="font-medium text-[#5f5f5f]">{statsLine}</span>
+          <span className="font-medium text-ink-soft">{statsLine}</span>
           {isEditableTab ? <SaveBadge status={status} /> : null}
         </div>
         {errorDetail ? (
-          <p className="mt-1 rounded-md border border-[#f3c9c5] bg-[#fdf0ef] px-2 py-1.5 text-[11px] leading-4 text-[#c42b1c]">
+          <Callout variant="error" className="mt-1 p-2.5 text-[11px] leading-4">
             {errorDetail}
-          </p>
+          </Callout>
         ) : null}
         {(tab === "tenho" || (sparse && tab === "preciso")) ? (
-          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[#e6e6e6]">
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-line">
             <div
               className="h-full rounded-full transition-all"
               style={{ width: `${progressPct}%`, background: accent }}
@@ -420,15 +414,15 @@ export function Gabarito({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar seleção (ex.: Brasil, ARG)…"
-            className="w-full rounded-md border border-[#d0d0d0] bg-white py-2 pl-9 pr-9 text-sm text-[#1b1b1b] placeholder:text-[#9a9a9a] focus:border-[#0067c0] focus:outline-none"
+            className={cn(getInputClassName(), "py-2 pl-9 pr-9")}
           />
           <svg
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
             width="16"
             height="16"
             viewBox="0 0 24 24"
             fill="none"
-            stroke="#9a9a9a"
+            stroke="currentColor"
             strokeWidth="2"
           >
             <circle cx="11" cy="11" r="7" />
@@ -439,7 +433,7 @@ export function Gabarito({
               type="button"
               onClick={() => setQuery("")}
               aria-label="Limpar busca"
-              className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-[#8a8a8a]"
+              className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted"
             >
               ✕
             </button>
@@ -447,20 +441,25 @@ export function Gabarito({
         </div>
       </div>
 
-      <p className="text-xs leading-5 text-[#5f5f5f]">{helperLine}</p>
+      <p className="text-xs leading-5 text-ink-soft">{helperLine}</p>
 
       {Object.keys(initialHeatLevels).length > 0 && tab !== "preciso" ? (
-        <p className="text-[11px] leading-4 text-[#8a8a8a]">
-          👑 ouro · 🔥 quente · ✨ procurada = demanda alta no grupo (poder de
-          barganha).
+        <p className="text-[11px] leading-4 text-ink-muted">
+          <span className="font-semibold text-golden">Ouro</span> ·{" "}
+          <span className="font-semibold text-hot">Quente</span> ·{" "}
+          <span className="font-semibold text-accent">Procurada</span> = demanda alta
+          no grupo.
         </p>
       ) : null}
 
       <div className="space-y-2">
         {filteredSections.length === 0 ? (
-          <p className="rounded-lg border border-[#e6e6e6] bg-white p-4 text-center text-sm text-[#5f5f5f]">
-            Nenhuma seleção encontrada para “{query}”.
-          </p>
+          <EmptyState
+            icon="album"
+            title="Nada encontrado"
+            description={`Nenhuma seleção encontrada para “${query}”.`}
+            className="py-8"
+          />
         ) : null}
         {filteredSections.map((section) => {
           const visibleCells = section.cells.filter((c) => cellVisible(c.code));
@@ -475,7 +474,7 @@ export function Gabarito({
           return (
             <div
               key={section.id}
-              className="overflow-hidden rounded-lg border border-[#e6e6e6] bg-white"
+              className="overflow-hidden rounded-lg border border-line bg-card"
             >
               <button
                 type="button"
@@ -483,11 +482,11 @@ export function Gabarito({
                 className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
               >
                 <span className="flex flex-col leading-tight">
-                  <span className="font-bold tracking-wide text-[#1b1b1b]">
+                  <span className="font-bold tracking-wide text-ink">
                     {section.kind === "team" ? section.id : section.title}
                   </span>
                   {section.kind === "team" ? (
-                    <span className="text-xs text-[#8a8a8a]">{section.title}</span>
+                    <span className="text-xs text-ink-muted">{section.title}</span>
                   ) : null}
                 </span>
                 <span className="flex items-center gap-2">
@@ -499,22 +498,12 @@ export function Gabarito({
                       {count}
                     </span>
                   ) : null}
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#9a9a9a"
-                    strokeWidth="2.5"
-                    className={`transition ${isOpen ? "rotate-180" : ""}`}
-                  >
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
+                  <ChevronIcon expanded={isOpen} className={isOpen ? "rotate-90" : ""} />
                 </span>
               </button>
 
               {isOpen ? (
-                <div className="grid grid-cols-3 gap-2 border-t border-[#eee] p-3 sm:grid-cols-4">
+                <div className="grid grid-cols-3 gap-2 border-t border-line p-3 sm:grid-cols-4">
                   {visibleCells.map((cell) => {
                     const qty = owned[cell.code] ?? (sparse ? 1 : 0);
                     const marked =
@@ -543,16 +532,16 @@ export function Gabarito({
                       qty > 0;
                     const heatRing =
                       heat === "golden"
-                        ? "ring-2 ring-[#d4a017] ring-offset-1"
+                        ? "ring-2 ring-golden ring-offset-1"
                         : heat === "hot"
-                          ? "ring-2 ring-[#ff8c00]/70 ring-offset-1"
+                          ? "ring-2 ring-hot/70 ring-offset-1"
                           : heat === "wanted"
-                            ? "ring-1 ring-[#0067c0]/50 ring-offset-1"
+                            ? "ring-1 ring-accent/50 ring-offset-1"
                             : "";
                     const reservedRing = reservedOut
-                      ? "ring-2 ring-dashed ring-[#d4a017] ring-offset-1"
+                      ? "ring-2 ring-dashed ring-golden ring-offset-1"
                       : reservedIn
-                        ? "ring-2 ring-dashed ring-[#7b5ea7] ring-offset-1"
+                        ? "ring-2 ring-dashed ring-reserve ring-offset-1"
                         : "";
                     const activeRing = reservedRing || heatRing;
                     const badgeQty =
@@ -573,10 +562,10 @@ export function Gabarito({
                           marked
                             ? `border-transparent text-white ${activeRing}`
                             : dimmed
-                              ? `border-[#e8e8e8] bg-[#f5f5f5] text-[#b0b0b0] ${activeRing}`
+                              ? `border-line bg-mica text-ink-muted ${activeRing}`
                               : activeRing
-                                ? `border-[#e0e0e0] bg-[#fafafa] text-[#5f5f5f] ${activeRing}`
-                                : "border-[#e0e0e0] bg-[#fafafa] text-[#5f5f5f]"
+                                ? `border-line bg-mica text-ink-soft ${activeRing}`
+                                : "border-line bg-mica text-ink-soft"
                         } ${readOnly ? "cursor-default opacity-95" : ""}`}
                         style={marked ? { background: accent } : undefined}
                       >
@@ -592,7 +581,7 @@ export function Gabarito({
                           </span>
                         ) : null}
                         {badgeQty > 1 || (tab === "repetidas" && badgeQty >= 1) ? (
-                          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#1b1b1b] px-1 text-[10px] font-bold text-white">
+                          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-ink px-1 text-[10px] font-bold text-white">
                             ×{tab === "repetidas" ? badgeQty : qty}
                           </span>
                         ) : null}
@@ -609,28 +598,27 @@ export function Gabarito({
         filteredSections.every(
           (s) => s.cells.filter((c) => (owned[c.code] ?? 0) > 1).length === 0,
         ) ? (
-          <p className="rounded-lg border border-[#e6e6e6] bg-white p-6 text-center text-sm text-[#5f5f5f]">
+          <p className="rounded-lg border border-line bg-card p-6 text-center text-sm text-ink-soft">
             Nenhuma repetida ainda. Marque figurinhas com quantidade 2 ou mais na
             aba Tenho.
           </p>
         ) : null}
         {tab === "repetidas" && sparse && repetidasTypes === 0 ? (
-          <p className="rounded-lg border border-[#e6e6e6] bg-white p-6 text-center text-sm text-[#5f5f5f]">
+          <p className="rounded-lg border border-line bg-card p-6 text-center text-sm text-ink-soft">
             Nenhuma repetida marcada. Toque nas figurinhas que você tem a mais —
             ou pule se não tiver repetidas agora.
           </p>
         ) : null}
         {tab === "preciso" && !sparse && needCount === TOTAL_STICKERS ? (
-          <p className="rounded-lg border border-[#ecdfc0] bg-[#fbf6ea] p-6 text-center text-sm text-[#5f5f5f]">
+          <Callout variant="warning" className="p-6 text-center">
             Marque o que você já tem na aba Tenho — o Preciso será calculado
             automaticamente.
-          </p>
+          </Callout>
         ) : null}
         {tab === "preciso" && sparse && needCount === 0 ? (
-          <p className="rounded-lg border border-[#cfe9cf] bg-[#eef7ee] p-6 text-center text-sm text-[#0f7b0f]">
-            Álbum completo! 🎉 Se faltar alguma figurinha, toque nela acima para
-            marcar.
-          </p>
+          <Callout variant="success" className="p-6 text-center">
+            Álbum completo! Se faltar alguma figurinha, toque nela acima para marcar.
+          </Callout>
         ) : null}
       </div>
 
@@ -650,11 +638,11 @@ export function Gabarito({
 
 function SaveBadge({ status }: { status: SaveStatus }) {
   if (status === "saving")
-    return <span className="text-[#5f5f5f]">Salvando…</span>;
+    return <span className="text-ink-soft">Salvando…</span>;
   if (status === "saved")
-    return <span className="font-medium text-[#0f7b0f]">Salvo ✓</span>;
+    return <span className="font-medium text-win-green">Salvo ✓</span>;
   if (status === "error")
-    return <span className="font-medium text-[#c42b1c]">Erro ao salvar</span>;
+    return <span className="font-medium text-error">Erro ao salvar</span>;
   return null;
 }
 
@@ -682,73 +670,55 @@ function CellSheet({
         : "Quantas cópias você tem?";
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/30"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-lg animate-sheet-up rounded-t-2xl bg-white p-5 pb-[calc(env(safe-area-inset-bottom)+20px)]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-[#d0d0d0]" />
-        <p className="text-center text-lg font-bold text-[#1b1b1b]">{code}</p>
-        <p className="mt-1 text-center text-sm text-[#5f5f5f]">{label}</p>
-        <div className="mt-5 flex items-center justify-center gap-5">
-          <button
-            type="button"
-            onClick={() => onSetQuantity(Math.max(minQty, quantity - 1))}
-            className="flex h-12 w-12 items-center justify-center rounded-full border border-[#d0d0d0] text-2xl font-bold text-[#1b1b1b] active:bg-[#f0f0f0]"
-          >
-            −
-          </button>
-          <span className="min-w-12 text-center text-3xl font-extrabold text-[#0067c0]">
-            {sparse && activeTab === "repetidas"
-              ? Math.max(0, quantity - 1)
-              : quantity}
-          </span>
-          <button
-            type="button"
-            onClick={() => onSetQuantity(quantity + 1)}
-            className="flex h-12 w-12 items-center justify-center rounded-full bg-[#0067c0] text-2xl font-bold text-white active:bg-[#005aa8]"
-          >
-            +
-          </button>
-        </div>
-        {quantity > minQty ? (
-          <button
-            type="button"
-            onClick={() => {
-              onSetQuantity(minQty);
-              onClose();
-            }}
-            className="mt-5 w-full rounded-md py-2 text-sm font-medium text-[#c42b1c]"
-          >
-            {sparse && activeTab === "preciso"
-              ? "Não tenho esta figurinha"
-              : sparse && activeTab === "repetidas"
-                ? "Sem repetida desta"
-                : "Não tenho esta figurinha"}
-          </button>
-        ) : null}
-        {sparse && activeTab === "repetidas" && quantity <= 1 ? (
-          <button
-            type="button"
-            onClick={() => {
-              onSetQuantity(2);
-            }}
-            className="mt-3 w-full rounded-md bg-[#0f7b0f] py-2.5 text-sm font-semibold text-white"
-          >
-            Tenho 1 repetida (total 2)
-          </button>
-        ) : null}
+    <Sheet open title={code} description={label} onClose={onClose}>
+      <div className="flex items-center justify-center gap-5">
         <button
           type="button"
-          onClick={onClose}
-          className="mt-3 w-full rounded-md border border-[#d0d0d0] py-2.5 text-sm font-medium text-[#1b1b1b]"
+          onClick={() => onSetQuantity(Math.max(minQty, quantity - 1))}
+          className="flex h-12 w-12 items-center justify-center rounded-full border border-border-soft text-2xl font-bold text-ink active:bg-mica"
         >
-          Fechar
+          −
+        </button>
+        <span className="min-w-12 text-center text-3xl font-extrabold text-accent">
+          {sparse && activeTab === "repetidas"
+            ? Math.max(0, quantity - 1)
+            : quantity}
+        </span>
+        <button
+          type="button"
+          onClick={() => onSetQuantity(quantity + 1)}
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-accent text-2xl font-bold text-white active:bg-accent-press"
+        >
+          +
         </button>
       </div>
-    </div>
+      {quantity > minQty ? (
+        <Button
+          variant="ghost"
+          fullWidth
+          className="mt-5 text-error"
+          onClick={() => {
+            onSetQuantity(minQty);
+            onClose();
+          }}
+        >
+          {sparse && activeTab === "preciso"
+            ? "Não tenho esta figurinha"
+            : sparse && activeTab === "repetidas"
+              ? "Sem repetida desta"
+              : "Não tenho esta figurinha"}
+        </Button>
+      ) : null}
+      {sparse && activeTab === "repetidas" && quantity <= 1 ? (
+        <Button
+          variant="success"
+          fullWidth
+          className="mt-3"
+          onClick={() => onSetQuantity(2)}
+        >
+          Tenho 1 repetida (total 2)
+        </Button>
+      ) : null}
+    </Sheet>
   );
 }

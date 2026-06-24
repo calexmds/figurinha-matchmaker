@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
 
 function isInAppBrowser(): boolean {
   if (typeof navigator === "undefined") return false;
@@ -34,20 +36,21 @@ export function InAppBrowserBanner({ url }: InAppBrowserBannerProps) {
   }
 
   return (
-    <div className="mb-4 rounded-lg border border-[#ecdfc0] bg-[#fbf6ea] p-4 text-sm text-[#1b1b1b]">
-      <p className="font-semibold">Abra no Chrome ou Safari</p>
-      <p className="mt-1 text-xs leading-5 text-[#5f5f5f]">
+    <Callout variant="warning" title="Abra no Chrome ou Safari" className="mb-4 p-4">
+      <p className="text-xs leading-5">
         O login pode não funcionar dentro do WhatsApp. Toque nos{" "}
         <strong>⋮</strong> (três pontinhos) e escolha{" "}
         <strong>Abrir no Chrome</strong> ou <strong>Abrir no Safari</strong>.
       </p>
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        fullWidth
+        className="mt-3 min-h-10 text-xs"
         onClick={copyLink}
-        className="mt-3 min-h-10 w-full rounded-md border border-[#d0d0d0] bg-white px-3 py-2 text-xs font-semibold text-[#1b1b1b]"
       >
         {copied ? "Link copiado ✓" : "Copiar link para colar no navegador"}
-      </button>
-    </div>
+      </Button>
+    </Callout>
   );
 }

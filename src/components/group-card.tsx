@@ -15,6 +15,11 @@ import {
   CopyInviteButton,
 } from "@/components/whatsapp-share";
 import { buildInviteMessage, buildNudgeMessage } from "@/lib/whatsapp";
+import { Button, ButtonLink, getButtonClassName } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
+import { Input } from "@/components/ui/input";
+import { ChevronIcon } from "@/components/ui/sheet";
+import { cn } from "@/lib/cn";
 
 type GroupCardProps = {
   group: UserGroupDetail;
@@ -79,27 +84,22 @@ export function GroupCard({ group, progress, currentUserId }: GroupCardProps) {
   }
 
   return (
-    <article className="overflow-hidden rounded-lg border border-[#e6e6e6] bg-white">
+    <article className="fluent-card overflow-hidden">
       <div className="flex items-center gap-2 p-4">
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+          className="flex min-w-0 flex-1 items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
           aria-expanded={expanded}
         >
-          <span
-            className={`shrink-0 text-[#8a8a8a] transition-transform ${expanded ? "rotate-90" : ""}`}
-            aria-hidden
-          >
-            ▶
-          </span>
+          <ChevronIcon expanded={expanded} />
           <div className="min-w-0 flex-1">
             {editing ? (
               <form onSubmit={handleSaveName} className="flex gap-2">
-                <input
+                <Input
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="min-w-0 flex-1 rounded-md border border-[#d0d0d0] px-2 py-1 text-sm"
+                  className="min-w-0 flex-1 px-2 py-1 text-sm"
                   required
                   disabled={busy}
                   onClick={(e) => e.stopPropagation()}
@@ -107,7 +107,9 @@ export function GroupCard({ group, progress, currentUserId }: GroupCardProps) {
                 <button
                   type="submit"
                   disabled={busy}
-                  className="shrink-0 rounded-md bg-[#0067c0] px-2 py-1 text-xs font-semibold text-white"
+                  className={getButtonClassName("primary", {
+                    className: "shrink-0 px-2 py-1 text-xs",
+                  })}
                   onClick={(e) => e.stopPropagation()}
                 >
                   Salvar
@@ -115,7 +117,9 @@ export function GroupCard({ group, progress, currentUserId }: GroupCardProps) {
                 <button
                   type="button"
                   disabled={busy}
-                  className="shrink-0 rounded-md border border-[#d0d0d0] px-2 py-1 text-xs"
+                  className={getButtonClassName("secondary", {
+                    className: "shrink-0 px-2 py-1 text-xs",
+                  })}
                   onClick={(e) => {
                     e.stopPropagation();
                     setEditing(false);
@@ -128,13 +132,13 @@ export function GroupCard({ group, progress, currentUserId }: GroupCardProps) {
               </form>
             ) : (
               <>
-                <p className="truncate font-semibold text-[#1b1b1b]">{group.name}</p>
-                <p className="text-xs text-[#8a8a8a]">
+                <p className="truncate font-semibold text-ink">{group.name}</p>
+                <p className="text-xs text-ink-muted">
                   {group.inviteCode} · {group.memberCount}{" "}
                   {group.memberCount === 1 ? "membro" : "membros"}
                 </p>
                 {!editing && progress.memberCount > 0 ? (
-                  <p className="mt-1 text-xs font-medium text-[#0067c0]">
+                  <p className="mt-1 text-xs font-medium text-accent">
                     {registrationSummary}
                     {progress.collectiveOwnedCount > 0 ? (
                       <>
@@ -147,7 +151,7 @@ export function GroupCard({ group, progress, currentUserId }: GroupCardProps) {
               </>
             )}
             {editError ? (
-              <p className="mt-1 text-xs text-[#c42b1c]">{editError}</p>
+              <p className="mt-1 text-xs text-error">{editError}</p>
             ) : null}
           </div>
         </button>
@@ -156,32 +160,35 @@ export function GroupCard({ group, progress, currentUserId }: GroupCardProps) {
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
             {group.isOwner ? (
               <>
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
                   disabled={busy}
                   onClick={() => setEditing(true)}
-                  className="rounded-md border border-[#d0d0d0] px-2.5 py-1.5 text-xs font-semibold text-[#1b1b1b] active:bg-[#f5f5f5]"
+                  className="min-h-8 px-2.5 py-1.5 text-xs"
                 >
                   Editar
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="danger"
                   disabled={busy}
                   onClick={handleDelete}
-                  className="rounded-md border border-[#f3c9c5] px-2.5 py-1.5 text-xs font-semibold text-[#c42b1c] active:bg-[#fdf0ef]"
+                  className="min-h-8 px-2.5 py-1.5 text-xs"
                 >
                   Excluir
-                </button>
+                </Button>
               </>
             ) : (
-              <button
+              <Button
                 type="button"
+                variant="secondary"
                 disabled={busy}
                 onClick={() => handleRemoveMember(currentUserId, "você")}
-                className="rounded-md border border-[#d0d0d0] px-2.5 py-1.5 text-xs font-semibold text-[#5f5f5f] active:bg-[#f5f5f5]"
+                className="min-h-8 px-2.5 py-1.5 text-xs"
               >
                 Sair
-              </button>
+              </Button>
             )}
           </div>
         ) : null}
@@ -189,9 +196,9 @@ export function GroupCard({ group, progress, currentUserId }: GroupCardProps) {
 
       {!editing && progress.memberCount > 0 ? (
         <div className="px-4 pb-3">
-          <div className="h-2 overflow-hidden rounded-full bg-[#eee]">
+          <div className="h-2 overflow-hidden rounded-full bg-mica">
             <div
-              className="h-full rounded-full bg-[#0067c0] transition-all"
+              className="h-full rounded-full bg-accent transition-all"
               style={{ width: `${registrationPercent}%` }}
             />
           </div>
@@ -199,49 +206,46 @@ export function GroupCard({ group, progress, currentUserId }: GroupCardProps) {
       ) : null}
 
       {expanded ? (
-        <div className="space-y-4 border-t border-[#eee] bg-[#fafafa] px-4 py-4">
+        <div className="space-y-4 border-t border-line bg-mica/50 px-4 py-4">
           {needsMoreMembers ? (
-            <div className="rounded-lg border border-[#ecdfc0] bg-[#fffbf0] p-4">
-              <p className="text-sm font-semibold text-[#9a6700]">
-                Convide mais alguém
-              </p>
-              <p className="mt-1 text-xs leading-5 text-[#5f5f5f]">
+            <Callout variant="warning" title="Convide mais alguém" className="p-4">
+              <p className="text-xs">
                 Trocas só funcionam com 2 ou mais pessoas no grupo.
               </p>
-            </div>
+            </Callout>
           ) : null}
 
           {hasPendingRegistration ? (
-            <div className="rounded-lg border border-[#cfe9cf] bg-[#eef7ee] p-4">
-              <p className="text-sm font-semibold text-[#0f7b0f]">
+            <Callout variant="success" className="p-4">
+              <p className="font-semibold">
                 {progress.registeredCount} de {progress.memberCount} já
                 cadastraram figurinhas
               </p>
               {progress.collectiveOwnedCount > 0 ? (
-                <p className="mt-1 text-xs text-[#5f5f5f]">
+                <p className="mt-1 text-xs">
                   Juntos vocês cobrem {progress.collectiveOwnedCount} de 980
                   figurinhas ({progress.collectivePercent}% do álbum).
                 </p>
               ) : null}
-            </div>
+            </Callout>
           ) : progress.memberCount >= 2 ? (
-            <div className="rounded-lg border border-[#cfe9cf] bg-[#eef7ee] p-4">
-              <p className="text-sm font-semibold text-[#0f7b0f]">
+            <Callout variant="success" className="p-4">
+              <p className="font-semibold">
                 Todos cadastraram — prontos para trocar!
               </p>
               {progress.collectiveOwnedCount > 0 ? (
-                <p className="mt-1 text-xs text-[#5f5f5f]">
+                <p className="mt-1 text-xs">
                   Álbum do grupo: {progress.collectiveOwnedCount}/980 (
                   {progress.collectivePercent}%).
                 </p>
               ) : null}
-            </div>
+            </Callout>
           ) : null}
 
           <div>
-            <p className="text-xs text-[#5f5f5f]">
+            <p className="text-xs text-ink-soft">
               Link de convite:{" "}
-              <span className="break-all font-mono text-[#0067c0]">
+              <span className="break-all font-mono text-accent">
                 {APP_URL}/join/{group.inviteCode}
               </span>
             </p>
@@ -260,17 +264,17 @@ export function GroupCard({ group, progress, currentUserId }: GroupCardProps) {
                 className="w-full"
               />
             </div>
-            <p className="mt-2 text-[11px] leading-4 text-[#8a8a8a]">
+            <p className="mt-2 text-[11px] leading-4 text-ink-muted">
               No iPhone, se o WhatsApp abrir vazio, use{" "}
               <strong>Copiar convite</strong> e cole na conversa.
             </p>
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold text-[#1b1b1b]">
+            <h3 className="text-sm font-semibold text-ink">
               Participantes
               {group.isOwner ? (
-                <span className="ml-2 text-xs font-normal text-[#8a8a8a]">
+                <span className="ml-2 text-xs font-normal text-ink-muted">
                   (você gerencia)
                 </span>
               ) : null}
@@ -283,53 +287,55 @@ export function GroupCard({ group, progress, currentUserId }: GroupCardProps) {
                 return (
                   <li
                     key={member.userId}
-                    className="rounded-md border border-[#eee] bg-white px-3 py-2 text-sm"
+                    className="rounded-xl border border-line bg-card px-3 py-2 text-sm"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <span className="text-[#1b1b1b]">
+                        <span className="text-ink">
                           {member.name}
                           {isSelf ? " (você)" : ""}
                           {isOwnerMember ? (
-                            <span className="ml-1 text-xs text-[#0067c0]">
+                            <span className="ml-1 text-xs text-accent">
                               · criador
                             </span>
                           ) : null}
                         </span>
                         <p
-                          className={`mt-0.5 text-xs font-semibold ${
+                          className={cn(
+                            "mt-0.5 text-xs font-semibold",
                             member.hasRegistered
-                              ? "text-[#0f7b0f]"
-                              : "text-[#9a6700]"
-                          }`}
+                              ? "text-win-green"
+                              : "text-win-amber",
+                          )}
                         >
                           {member.hasRegistered
-                            ? `✓ Cadastrou${member.ownedCount > 0 ? ` · ${member.ownedCount} figurinhas` : ""}`
+                            ? `Cadastrou${member.ownedCount > 0 ? ` · ${member.ownedCount} figurinhas` : ""}`
                             : "Pendente — ainda não marcou figurinhas"}
                         </p>
                       </div>
                       {group.isOwner && !isSelf ? (
-                        <button
+                        <Button
                           type="button"
+                          variant="danger"
                           disabled={busy}
                           onClick={() =>
                             handleRemoveMember(member.userId, member.name)
                           }
-                          className="shrink-0 rounded-md border border-[#f3c9c5] px-2 py-1 text-xs font-semibold text-[#c42b1c]"
+                          className="min-h-8 shrink-0 px-2 py-1 text-xs"
                         >
                           Remover
-                        </button>
+                        </Button>
                       ) : null}
                     </div>
                     {!member.hasRegistered ? (
                       <div className="mt-2 flex flex-col gap-2 sm:flex-row">
                         {isSelf ? (
-                          <a
+                          <ButtonLink
                             href="/onboarding"
-                            className="inline-flex min-h-9 flex-1 items-center justify-center rounded-md bg-[#0067c0] px-3 py-2 text-xs font-semibold text-white active:bg-[#005aa8]"
+                            className="min-h-9 flex-1 px-3 py-2 text-xs"
                           >
                             Cadastrar minhas figurinhas
-                          </a>
+                          </ButtonLink>
                         ) : (
                           <WhatsAppShareButton
                             message={buildNudgeMessage(

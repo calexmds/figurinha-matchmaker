@@ -62,8 +62,8 @@ export function PendingTradeCard({ trade }: PendingTradeCardProps) {
             <StickerChipList codes={trade.give} variant="give" />
           </div>
         </div>
-        <div className="rounded-xl border border-dashed border-[#7b5ea7]/50 bg-[#f7f3fb] p-4">
-          <p className="text-xs font-semibold uppercase text-[#7b5ea7]">
+        <div className="rounded-xl border border-dashed border-reserve/50 bg-reserve/5 p-4">
+          <p className="text-xs font-semibold uppercase text-reserve">
             Você recebe
           </p>
           <div className="mt-2">

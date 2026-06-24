@@ -2,6 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { saveStickerListing } from "@/app/actions";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
+import { getInputClassName } from "@/components/ui/input";
 
 type ListingOption = {
   code: string;
@@ -46,18 +50,22 @@ export function MarketListingForm({
 
   if (sellOptions.length === 0 && buyOptions.length === 0) {
     return (
-      <p className="text-sm text-[#5f5f5f]">
-        Marque repetidas ou figurinhas que faltam em Tenho para anunciar compra
-        ou venda.
-      </p>
+      <EmptyState
+        icon="album"
+        title="Nada para anunciar ainda"
+        description="Marque repetidas ou figurinhas que faltam na aba Figurinhas para publicar compra ou venda."
+        className="py-8"
+      />
     );
   }
+
+  const selectClass = getInputClassName("mt-1 py-2");
 
   return (
     <form action={saveStickerListing} className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block text-sm">
-          <span className="font-semibold text-[#1b1b1b]">Tipo</span>
+          <span className="font-semibold text-ink">Tipo</span>
           <select
             name="listingType"
             value={listingType}
@@ -67,7 +75,7 @@ export function MarketListingForm({
               const nextOptions = nextType === "sell" ? sellOptions : buyOptions;
               setSelectedCode(nextOptions[0]?.code ?? "");
             }}
-            className="mt-1 w-full rounded-md border border-[#ecdfc0] bg-white px-3 py-2 text-sm"
+            className={selectClass}
             required
           >
             <option value="sell" disabled={sellOptions.length === 0}>
@@ -80,12 +88,12 @@ export function MarketListingForm({
         </label>
 
         <label className="block text-sm">
-          <span className="font-semibold text-[#1b1b1b]">Figurinha</span>
+          <span className="font-semibold text-ink">Figurinha</span>
           <select
             name="code"
             value={selectedCode}
             onChange={(event) => setSelectedCode(event.target.value)}
-            className="mt-1 w-full rounded-md border border-[#ecdfc0] bg-white px-3 py-2 text-sm"
+            className={selectClass}
             required
           >
             {uniqueOptions.map((option) => (
@@ -100,23 +108,19 @@ export function MarketListingForm({
       <input type="hidden" name="groupId" value={selectedGroupId} />
 
       <label className="block text-sm">
-        <span className="font-semibold text-[#1b1b1b]">Valor (opcional)</span>
-        <input
+        <span className="font-semibold text-ink">Valor (opcional)</span>
+        <Input
           name="priceNote"
           type="text"
           placeholder="Ex.: R$ 3,00 ou a combinar"
           maxLength={80}
-          className="mt-1 w-full rounded-md border border-[#ecdfc0] bg-white px-3 py-2 text-sm"
+          className="mt-1 py-2"
         />
       </label>
 
-      <button
-        type="submit"
-        disabled={uniqueOptions.length === 0}
-        className="min-h-11 w-full rounded-md bg-[#0067c0] px-4 py-3 text-sm font-semibold text-white active:bg-[#005aa8] disabled:cursor-not-allowed disabled:opacity-50"
-      >
+      <Button type="submit" disabled={uniqueOptions.length === 0} fullWidth>
         Publicar anúncio
-      </button>
+      </Button>
     </form>
   );
 }

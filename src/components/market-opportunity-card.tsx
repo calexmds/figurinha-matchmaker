@@ -2,6 +2,7 @@ import type { MarketOpportunity } from "@/lib/types";
 import { formatPriceLabel } from "@/lib/market-listings";
 import { WhatsAppShareButton } from "@/components/whatsapp-share";
 import { buildBuyMessage, buildSellMessage } from "@/lib/whatsapp";
+import { cn } from "@/lib/cn";
 
 type MarketOpportunityCardProps = {
   opportunity: MarketOpportunity;
@@ -20,35 +21,34 @@ export function MarketOpportunityCard({ opportunity }: MarketOpportunityCardProp
     <article className="fluent-card p-5">
       <div className="flex flex-wrap items-center gap-2">
         <span
-          className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+          className={cn(
+            "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase",
             isBuyFrom
-              ? "bg-[#eef7ee] text-[#0f7b0f]"
-              : "bg-[#fff4e6] text-[#c45c00]"
-          }`}
+              ? "bg-[#eef7ee] text-win-green"
+              : "bg-[#fff4e6] text-[#c45c00]",
+          )}
         >
           {isBuyFrom ? "Comprar" : "Vender"}
         </span>
-        <span className="rounded-full bg-[#eaf3fb] px-2 py-0.5 text-[10px] font-semibold text-[#0067c0]">
+        <span className="rounded-full bg-[#eaf3fb] px-2 py-0.5 text-[10px] font-semibold text-accent">
           {listing.groupName}
         </span>
       </div>
 
-      <h4 className="mt-2 text-lg font-bold text-[#1b1b1b]">
+      <h4 className="font-display mt-2 text-lg font-bold text-ink">
         {listing.code}{" "}
-        <span className="text-base font-normal text-[#5f5f5f]">
+        <span className="text-base font-normal text-ink-soft">
           · {listing.userName}
         </span>
       </h4>
 
-      <p className="mt-2 text-sm text-[#5f5f5f]">
+      <p className="mt-2 text-sm text-ink-soft">
         {isBuyFrom
           ? `${listing.userName} está vendendo esta figurinha que você precisa.`
           : `${listing.userName} quer comprar esta repetida sua.`}
       </p>
 
-      <p className="mt-2 text-sm font-semibold text-[#1b1b1b]">
-        Valor: {priceLabel}
-      </p>
+      <p className="mt-2 text-sm font-semibold text-ink">Valor: {priceLabel}</p>
 
       <div className="mt-4">
         <WhatsAppShareButton

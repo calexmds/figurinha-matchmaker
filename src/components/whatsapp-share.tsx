@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { copyText, openWhatsAppShare } from "@/lib/share";
+import { getButtonClassName } from "@/components/ui/button";
+import { cn } from "@/lib/cn";
 
 type WhatsAppShareProps = {
   message: string;
@@ -31,7 +33,10 @@ export function WhatsAppShareButton({
       type="button"
       onClick={() => void handleShare()}
       disabled={busy}
-      className={`inline-flex items-center justify-center rounded-md bg-[#25D366] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1ebe5d] disabled:opacity-70 ${className}`}
+      className={cn(
+        "inline-flex items-center justify-center rounded-xl bg-[#25D366] px-4 py-3 text-sm font-semibold text-white transition active:bg-[#1ebe5d] disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366] focus-visible:ring-offset-2",
+        className,
+      )}
     >
       {busy ? "Abrindo…" : label}
     </button>
@@ -65,7 +70,7 @@ export function CopyInviteButton({
     <button
       type="button"
       onClick={() => void handleCopy()}
-      className={`inline-flex min-h-11 items-center justify-center rounded-md border border-[#d0d0d0] bg-white px-4 py-3 text-sm font-semibold text-[#1b1b1b] transition active:bg-[#f5f5f5] ${className}`}
+      className={getButtonClassName("ghost", { fullWidth: true, className })}
     >
       {copied ? copiedLabel : label}
     </button>

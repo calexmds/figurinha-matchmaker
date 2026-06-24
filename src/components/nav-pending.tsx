@@ -47,10 +47,10 @@ export function NavProgressBar() {
 
   return (
     <div
-      className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 overflow-hidden bg-[#0067c0]/15"
+      className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 overflow-hidden bg-accent/15"
       aria-hidden
     >
-      <div className="nav-progress-indeterminate h-full w-1/3 bg-[#0067c0]" />
+      <div className="nav-progress-indeterminate h-full w-1/3 bg-accent" />
     </div>
   );
 }

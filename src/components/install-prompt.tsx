@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -53,27 +55,23 @@ export function InstallPrompt() {
   }
 
   return (
-    <div className="mb-4 rounded-lg border border-[#cfe3f5] bg-[#eaf3fb] p-4">
-      <p className="text-sm font-semibold text-[#1b1b1b]">Instalar no celular</p>
-      <p className="mt-1 text-xs leading-5 text-[#5f5f5f]">
+    <Callout variant="info" title="Instalar no celular" className="mb-4 p-4">
+      <p className="text-xs">
         Adicione à tela inicial para usar como app, sem barra do navegador.
       </p>
       <div className="mt-3 flex gap-2">
-        <button
-          type="button"
-          onClick={install}
-          className="min-h-11 flex-1 rounded-md bg-[#0067c0] px-4 py-2 text-sm font-semibold text-white active:bg-[#005aa8]"
-        >
+        <Button type="button" onClick={install} className="min-h-11 flex-1">
           Instalar app
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="ghost"
           onClick={dismiss}
-          className="min-h-11 rounded-md px-4 py-2 text-sm font-medium text-[#5f5f5f]"
+          className="min-h-11 px-4"
         >
           Agora não
-        </button>
+        </Button>
       </div>
-    </div>
+    </Callout>
   );
 }

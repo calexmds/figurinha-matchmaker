@@ -13,18 +13,18 @@ const styles: Record<
 > = {
   wanted: {
     bg: "bg-[#eef6ff]",
-    text: "text-[#0067c0]",
-    ring: "ring-[#0067c0]/30",
+    text: "text-accent",
+    ring: "ring-accent/30",
   },
   hot: {
     bg: "bg-[#fff4e6]",
-    text: "text-[#c45c00]",
-    ring: "ring-[#ff8c00]/40",
+    text: "text-hot",
+    ring: "ring-hot/40",
   },
   golden: {
     bg: "bg-gradient-to-r from-[#fff8e6] to-[#ffefd0]",
-    text: "text-[#9a6700]",
-    ring: "ring-[#d4a017]/50",
+    text: "text-win-amber",
+    ring: "ring-golden/50",
   },
 };
 
@@ -71,18 +71,18 @@ export function StickerChip({
       ? "border-[#ecdfc0] bg-[#fffbf5]"
       : variant === "receive"
         ? "border-[#cfe9cf] bg-[#f5fbf5]"
-        : "border-[#e6e6e6] bg-[#fafafa]";
+        : "border-line bg-mica";
 
   const golden =
     level === "golden"
-      ? "border-[#d4a017] bg-gradient-to-br from-[#fffbeb] to-[#fff3cc] shadow-[0_0_12px_rgba(212,160,23,0.25)]"
+      ? "border-golden bg-gradient-to-br from-[#fffbeb] to-[#fff3cc] shadow-[0_0_12px_rgba(212,160,23,0.25)]"
       : level === "hot"
-        ? "border-[#ffb366] bg-[#fff8f0]"
+        ? "border-hot/60 bg-[#fff8f0]"
         : "";
 
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-bold text-[#1b1b1b] ${golden || base}`}
+      className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-bold text-ink ${golden || base}`}
     >
       {code}
       <StickerHeatBadge level={level} demand={demand} compact />
@@ -104,7 +104,7 @@ export function StickerChipList({
   emptyLabel = "—",
 }: StickerChipListProps) {
   if (codes.length === 0) {
-    return <span className="text-sm text-[#5f5f5f]">{emptyLabel}</span>;
+    return <span className="text-sm text-ink-soft">{emptyLabel}</span>;
   }
 
   return (

@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { AuthPanel } from "@/components/auth-panel";
 import { InAppBrowserBanner } from "@/components/in-app-browser-banner";
+import { Callout } from "@/components/ui/callout";
+import { EmptyState } from "@/components/ui/empty-state";
 import { APP_NAME } from "@/lib/constants";
 import { normalizeInviteCode } from "@/lib/invite";
 import { createClient } from "@/lib/supabase/server";
@@ -30,12 +32,11 @@ export default async function JoinPage({
     return (
       <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 py-12">
         <InAppBrowserBanner />
-        <div className="fluent-card p-8 text-center">
-          <h1 className="text-2xl font-bold text-[#1b1b1b]">Convite inválido</h1>
-          <p className="mt-3 text-sm text-[#5f5f5f]">
-            O código <strong>{inviteCode}</strong> não foi encontrado.
-          </p>
-        </div>
+        <EmptyState
+          icon="group"
+          title="Convite inválido"
+          description={`O código ${inviteCode} não foi encontrado.`}
+        />
       </main>
     );
   }
@@ -52,7 +53,6 @@ export default async function JoinPage({
       redirect("/home");
     }
 
-    // Já logado: entra no grupo automaticamente (1 passo só)
     redirect(`/api/join/${inviteCode}`);
   }
 
@@ -63,19 +63,21 @@ export default async function JoinPage({
       />
 
       <div className="fluent-card p-8">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#0067c0]">
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-accent">
           Convite
         </p>
-        <h1 className="mt-3 text-3xl font-bold text-[#1b1b1b]">{groupData.name}</h1>
-        <p className="mt-3 text-sm leading-6 text-[#5f5f5f]">
+        <h1 className="font-display mt-3 text-3xl font-bold text-ink">
+          {groupData.name}
+        </h1>
+        <p className="mt-3 text-sm leading-6 text-ink-soft">
           Você foi convidado para trocar figurinhas no {APP_NAME}. Entre e
-          marque o que você tem no gabarito (aba Tenho).
+          marque o que você tem no gabarito.
         </p>
 
         {query.error ? (
-          <p className="mt-4 rounded-md border border-[#f3c9c5] bg-[#fdf0ef] px-4 py-3 text-sm text-[#c42b1c]">
+          <Callout variant="error" className="mt-4 p-4">
             {decodeURIComponent(query.error)}
-          </p>
+          </Callout>
         ) : null}
 
         <div className="mt-8">

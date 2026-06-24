@@ -16,6 +16,8 @@
   --color-win-amber: #9a6700;
   --color-error: #c42b1c;
   --color-golden: #d4a017;
+  --color-hot: #ff8c00;
+  --color-reserve: #7b5ea7;
   --color-border-soft: #d0d0d0;
   --radius-card: 0.75rem;
   --font-display: var(--font-geist-sans), system-ui, sans-serif;
