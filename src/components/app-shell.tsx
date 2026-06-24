@@ -9,7 +9,13 @@ import {
   usePrefetchAppRoutes,
 } from "@/components/nav-pending";
 
-function AppShellInner({ children }: { children: React.ReactNode }) {
+function AppShellInner({
+  children,
+  tradesBadgeCount = 0,
+}: {
+  children: React.ReactNode;
+  tradesBadgeCount?: number;
+}) {
   const pathname = usePathname();
   usePrefetchAppRoutes();
 
@@ -22,15 +28,23 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
       <main className="mx-auto w-full max-w-lg flex-1 px-4 py-4 pb-28">
         {children}
       </main>
-      <BottomNav />
+      <BottomNav tradesBadgeCount={tradesBadgeCount} />
     </div>
   );
 }
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({
+  children,
+  tradesBadgeCount = 0,
+}: {
+  children: React.ReactNode;
+  tradesBadgeCount?: number;
+}) {
   return (
     <NavPendingProvider>
-      <AppShellInner>{children}</AppShellInner>
+      <AppShellInner tradesBadgeCount={tradesBadgeCount}>
+        {children}
+      </AppShellInner>
     </NavPendingProvider>
   );
 }

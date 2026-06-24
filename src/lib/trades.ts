@@ -47,6 +47,8 @@ function revalidateTradePaths() {
   revalidatePath("/trocas");
   revalidatePath("/home");
   revalidatePath("/onboarding");
+  revalidatePath("/grupo");
+  revalidatePath("/trocas", "layout");
 }
 
 async function fetchOwnedMap(supabase: SupabaseClient, userId: string) {
@@ -240,6 +242,23 @@ export function applyReservationsToLists(
   const availableNeeds = needs.filter((code) => !reservations.receive.has(code));
 
   return { availableDuplicates, availableNeeds };
+}
+
+/** Trocas que exigem ação do usuário (proposta recebida ou confirmação pendente). */
+export function countTradesNeedingAttention(trades: PendingTrade[]): number {
+  return trades.filter(
+    (trade) =>
+      (trade.status === "proposed" && trade.role === "partner") ||
+      (trade.status === "active" && !trade.myConfirmed),
+  ).length;
+}
+
+export async function getTradesAttentionCount(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<number> {
+  const trades = await getAllPendingTrades(supabase, userId);
+  return countTradesNeedingAttention(trades);
 }
 
 export async function getAllPendingTrades(

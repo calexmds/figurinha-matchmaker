@@ -76,9 +76,12 @@ const tabs = [
   },
 ] as const;
 
-export function BottomNav() {
+export function BottomNav({ tradesBadgeCount = 0 }: { tradesBadgeCount?: number }) {
   const pathname = usePathname();
   const { isPending, navigate } = useNavPending();
+
+  const badgeLabel =
+    tradesBadgeCount > 9 ? "9+" : String(tradesBadgeCount);
 
   useEffect(() => {
     if (isPending) {
@@ -95,6 +98,7 @@ export function BottomNav() {
         {tabs.map((tab) => {
           const active =
             pathname === tab.href || pathname.startsWith(`${tab.href}/`);
+          const showBadge = tab.href === "/trocas" && tradesBadgeCount > 0;
 
           return (
             <button
@@ -104,15 +108,34 @@ export function BottomNav() {
                 if (!active) navigate(tab.href);
               }}
               disabled={isPending && !active}
-              className={`flex min-h-16 flex-col items-center justify-center gap-1 px-2 py-2 transition ${
+              className={`relative flex min-h-16 flex-col items-center justify-center gap-1 px-2 py-2 transition ${
                 active
                   ? "text-[#0067c0]"
                   : "text-[#8a8a8a] active:text-[#5f5f5f] disabled:opacity-60"
               }`}
             >
-              {tab.icon(active)}
+              <span className="relative">
+                {tab.icon(active)}
+                {showBadge ? (
+                  <span
+                    className="absolute -right-2 -top-1 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#c42b1c] px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white"
+                    aria-hidden
+                  >
+                    {badgeLabel}
+                  </span>
+                ) : null}
+              </span>
               <span className="text-[10px] font-semibold tracking-wide">
                 {tab.label}
+                {showBadge ? (
+                  <span className="sr-only">
+                    {" "}
+                    — {tradesBadgeCount}{" "}
+                    {tradesBadgeCount === 1
+                      ? "ação pendente"
+                      : "ações pendentes"}
+                  </span>
+                ) : null}
               </span>
             </button>
           );

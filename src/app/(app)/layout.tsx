@@ -1,9 +1,16 @@
 import { AppShell } from "@/components/app-shell";
+import { requireUser } from "@/lib/auth";
+import { getTradesAttentionCount } from "@/lib/trades";
 
-export default function AppLayout({
+export default async function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <AppShell>{children}</AppShell>;
+  const { supabase, user } = await requireUser();
+  const tradesBadgeCount = await getTradesAttentionCount(supabase, user.id);
+
+  return (
+    <AppShell tradesBadgeCount={tradesBadgeCount}>{children}</AppShell>
+  );
 }
