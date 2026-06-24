@@ -4,6 +4,9 @@ import { InstallPrompt } from "@/components/install-prompt";
 import { StatCard } from "@/components/stat-card";
 import { GroupIntelligenceHero } from "@/components/group-intelligence-hero";
 import { WhatsAppShareButton } from "@/components/whatsapp-share";
+import { ButtonLink } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
+import { CopaHero } from "@/components/ui/copa-hero";
 import { buildProfileMessage } from "@/lib/whatsapp";
 import {
   buildGroupIntelligence,
@@ -83,59 +86,75 @@ export default async function HomePage() {
       s.progress.memberCount < 2 || s.progress.pendingMembers.length > 0,
   );
 
+  const heroTitle =
+    goldenCount > 0
+      ? "Você tem figurinhas de ouro!"
+      : hasLists
+        ? "Pronto para trocar"
+        : "Cadastre suas listas";
+
+  const heroSubtitle =
+    groups.length > 0 ? (
+      <>
+        {groups.length === 1 ? "Grupo" : "Grupos"}:{" "}
+        <strong className="text-white">{groupLabel}</strong>
+        {totalMembers > 1 ? (
+          <> · {totalMembers} colecionadores no radar</>
+        ) : null}
+      </>
+    ) : (
+      <>
+        Entre no grupo da família ou amigos para cruzar repetidas.{" "}
+        <Link
+          href="/grupo"
+          className="font-semibold text-white underline decoration-white/50 underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+        >
+          Crie ou entre agora
+        </Link>
+      </>
+    );
+
   return (
     <div className="space-y-6">
       <InstallPrompt />
 
-      <div>
-        <p className="text-sm text-[#5f5f5f]">
-          Olá, {profile?.name ?? "colecionador"}
-        </p>
-        <h2 className="mt-1 text-2xl font-bold text-[#1b1b1b]">
-          {goldenCount > 0
-            ? "Você tem figurinhas de ouro!"
-            : hasLists
-              ? "Pronto para trocar"
-              : "Cadastre suas listas"}
-        </h2>
-        {groups.length > 0 ? (
-          <p className="mt-2 text-sm text-[#5f5f5f]">
-            {groups.length === 1 ? "Grupo" : "Grupos"}:{" "}
-            <strong className="text-[#1b1b1b]">{groupLabel}</strong>
-            {totalMembers > 1 ? (
-              <> · {totalMembers} colecionadores no radar</>
-            ) : null}
-          </p>
-        ) : (
-          <p className="mt-2 text-sm text-[#9a6700]">
-            Você ainda não entrou em um grupo.{" "}
-            <Link href="/grupo" className="font-semibold underline">
-              Crie ou entre agora
-            </Link>
-          </p>
-        )}
-      </div>
+      <CopaHero
+        variant={goldenCount > 0 ? "golden" : "brand"}
+        eyebrow={`Olá, ${profile?.name ?? "colecionador"}`}
+        title={heroTitle}
+        subtitle={heroSubtitle}
+        action={
+          !hasLists ? (
+            <ButtonLink href="/onboarding" variant="onBrand" fullWidth>
+              Cadastrar figurinhas
+            </ButtonLink>
+          ) : availableInGroups > 0 ? (
+            <ButtonLink href="/trocas" variant="onBrand" fullWidth>
+              Ver {availableInGroups} oportunidades de troca
+            </ButtonLink>
+          ) : undefined
+        }
+      />
 
       {groupsNeedingNudge.length > 0 ? (
-        <div className="rounded-lg border border-[#ecdfc0] bg-[#fffbf0] p-5">
-          <p className="text-sm font-semibold text-[#9a6700]">
-            {groupsNeedingNudge.length === 1
+        <Callout
+          variant="warning"
+          title={
+            groupsNeedingNudge.length === 1
               ? groupsNeedingNudge[0].progress.memberCount < 2
                 ? `${groupsNeedingNudge[0].group.name}: convide mais alguém`
                 : `${groupsNeedingNudge[0].group.name}: ${groupsNeedingNudge[0].progress.registeredCount} de ${groupsNeedingNudge[0].progress.memberCount} cadastraram`
-              : "Alguns grupos ainda precisam de cadastro ou convites"}
-          </p>
-          <p className="mt-2 text-sm leading-6 text-[#5f5f5f]">
+              : "Alguns grupos ainda precisam de cadastro ou convites"
+          }
+        >
+          <p>
             Abra Grupo para lembrar quem falta marcar figurinhas ou convidar de
             novo pelo WhatsApp.
           </p>
-          <Link
-            href="/grupo"
-            className="mt-4 inline-flex min-h-11 items-center rounded-md bg-[#0067c0] px-4 py-3 text-sm font-semibold text-white active:bg-[#005aa8]"
-          >
+          <ButtonLink href="/grupo" className="mt-4">
             Ver progresso do grupo
-          </Link>
-        </div>
+          </ButtonLink>
+        </Callout>
       ) : null}
 
       {heroSnapshot ? (
@@ -176,42 +195,10 @@ export default async function HomePage() {
         ) : null}
       </div>
 
-      {!hasLists ? (
-        <div className="rounded-lg border border-[#ecdfc0] bg-[#fbf6ea] p-5">
-          <p className="text-sm text-[#1b1b1b]">
-            Comece marcando suas repetidas e o que precisa — leva poucos minutos.
-          </p>
-          <Link
-            href="/onboarding"
-            className="mt-4 inline-flex min-h-11 items-center rounded-md bg-[#0067c0] px-4 py-3 text-sm font-semibold text-white active:bg-[#005aa8]"
-          >
-            Cadastrar agora
-          </Link>
-        </div>
-      ) : null}
-
-      {groups.length > 0 && needs.length > 0 && availableInGroups > 0 ? (
-        <div className="rounded-lg border border-[#cfe9cf] bg-[#eef7ee] p-5">
-          <p className="text-sm font-semibold text-[#0f7b0f]">Nos seus grupos</p>
-          <p className="mt-2 text-2xl font-bold text-[#1b1b1b]">
-            {availableInGroups} das que você precisa estão com alguém
-          </p>
-          <Link
-            href="/trocas"
-            className="mt-4 inline-flex min-h-11 items-center rounded-md bg-[#0f7b0f] px-4 py-3 text-sm font-semibold text-white active:bg-[#0c640c]"
-          >
-            Ver sugestões de troca
-          </Link>
-        </div>
-      ) : null}
-
       <div className="flex flex-col gap-3">
-        <Link
-          href="/onboarding"
-          className="inline-flex min-h-12 items-center justify-center rounded-md border border-[#d0d0d0] bg-white px-4 py-3 text-sm font-semibold text-[#1b1b1b] active:bg-[#f0f0f0]"
-        >
+        <ButtonLink href="/onboarding" variant="ghost" fullWidth>
           Atualizar listas
-        </Link>
+        </ButtonLink>
         {hasLists ? (
           <WhatsAppShareButton
             message={buildProfileMessage(

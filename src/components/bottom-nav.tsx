@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useNavPending } from "@/components/nav-pending";
+import { cn } from "@/lib/cn";
 
 const tabs = [
   {
@@ -91,7 +92,10 @@ export function BottomNav({ tradesBadgeCount = 0 }: { tradesBadgeCount?: number 
 
   return (
     <nav
-      className={`fixed inset-x-0 bottom-0 z-30 border-t border-[#e6e6e6] bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-2px_8px_rgba(0,0,0,0.06)] transition-opacity ${isPending ? "opacity-95" : ""}`}
+      className={cn(
+        "fluent-chrome fixed inset-x-0 bottom-0 z-30 border-t border-line/80 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_24px_rgba(0,0,0,0.06)] transition-opacity",
+        isPending && "opacity-95",
+      )}
       aria-label="Navegação principal"
     >
       <div className="mx-auto grid max-w-lg grid-cols-4">
@@ -108,17 +112,18 @@ export function BottomNav({ tradesBadgeCount = 0 }: { tradesBadgeCount?: number 
                 if (!active) navigate(tab.href);
               }}
               disabled={isPending && !active}
-              className={`relative flex min-h-16 flex-col items-center justify-center gap-1 px-2 py-2 transition ${
+              className={cn(
+                "relative flex min-h-16 flex-col items-center justify-center gap-1 px-2 py-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent",
                 active
-                  ? "text-[#0067c0]"
-                  : "text-[#8a8a8a] active:text-[#5f5f5f] disabled:opacity-60"
-              }`}
+                  ? "text-accent"
+                  : "text-ink-muted active:text-ink-soft disabled:opacity-60",
+              )}
             >
               <span className="relative">
                 {tab.icon(active)}
                 {showBadge ? (
                   <span
-                    className="absolute -right-2 -top-1 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#c42b1c] px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white"
+                    className="absolute -right-2 -top-1 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold leading-none text-white ring-2 ring-card"
                     aria-hidden
                   >
                     {badgeLabel}

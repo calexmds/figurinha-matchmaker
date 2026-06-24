@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { UserChaseSticker, UserPowerSticker } from "@/lib/types";
 import { StickerHeatBadge } from "@/components/sticker-heat-badge";
+import { ButtonLink } from "@/components/ui/button";
 import { getHeatEmoji } from "@/lib/group-intelligence";
 
 type GroupIntelligenceHeroProps = {
@@ -26,24 +27,24 @@ export function GroupIntelligenceHero({
     <section className="space-y-4">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#0067c0]">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
             Radar do grupo
           </p>
-          <h3 className="mt-1 text-lg font-bold text-[#1b1b1b]">
+          <h3 className="font-display mt-1 text-lg font-bold text-ink">
             Inteligência de troca · {groupName}
           </h3>
         </div>
-        <span className="shrink-0 rounded-full bg-[#eef6ff] px-3 py-1 text-xs font-bold text-[#0067c0]">
+        <span className="shrink-0 rounded-full bg-[#eef6ff] px-3 py-1 text-xs font-bold text-accent">
           {memberCount} colecionadores
         </span>
       </div>
 
       {golden.length > 0 ? (
-        <div className="relative overflow-hidden rounded-2xl border border-[#d4a017]/60 bg-gradient-to-br from-[#fffbeb] via-[#fff3cc] to-[#ffe8a3] p-5 shadow-[0_8px_32px_rgba(212,160,23,0.18)]">
+        <div className="relative overflow-hidden rounded-2xl border border-golden/60 bg-gradient-to-br from-[#fffbeb] via-[#fff3cc] to-[#ffe8a3] p-5 shadow-[0_8px_32px_rgba(212,160,23,0.18)]">
           <div className="pointer-events-none absolute -right-6 -top-6 h-32 w-32 rounded-full bg-[#ffd966]/30 blur-2xl" />
           <div className="pointer-events-none absolute -bottom-4 -left-4 h-24 w-24 rounded-full bg-[#ff8c00]/15 blur-xl" />
           <div className="relative">
-            <p className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-[#9a6700]">
+            <p className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-win-amber">
               <span className="text-xl" aria-hidden>
                 👑
               </span>
@@ -58,10 +59,10 @@ export function GroupIntelligenceHero({
               {golden.slice(0, 3).map((s) => (
                 <li
                   key={s.code}
-                  className="rounded-xl border border-[#d4a017]/40 bg-white/70 px-4 py-3 backdrop-blur-sm"
+                  className="rounded-xl border border-golden/40 bg-white/70 px-4 py-3 backdrop-blur-sm"
                 >
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-lg font-black text-[#1b1b1b]">
+                    <span className="font-display text-lg font-black text-ink">
                       {s.code}
                     </span>
                     <StickerHeatBadge level={s.level} demand={s.demand} />
@@ -72,12 +73,12 @@ export function GroupIntelligenceHero({
                 </li>
               ))}
             </ul>
-            <Link
+            <ButtonLink
               href="/trocas"
-              className="mt-4 inline-flex min-h-11 items-center rounded-md bg-gradient-to-r from-[#9a6700] to-[#c45c00] px-5 py-3 text-sm font-bold text-white shadow-md active:opacity-90"
+              className="mt-4 bg-gradient-to-r from-win-amber to-[#c45c00] text-white shadow-md active:opacity-90"
             >
               Negociar com poder de ouro →
-            </Link>
+            </ButtonLink>
           </div>
         </div>
       ) : null}
@@ -93,9 +94,9 @@ export function GroupIntelligenceHero({
                 key={s.code}
                 className="rounded-lg border border-[#ffb366]/40 bg-white px-3 py-2"
               >
-                <span className="font-bold text-[#1b1b1b]">{s.code}</span>
+                <span className="font-bold text-ink">{s.code}</span>
                 <StickerHeatBadge level={s.level} demand={s.demand} compact />
-                <p className="mt-1 text-[11px] text-[#5f5f5f]">
+                <p className="mt-1 text-[11px] text-ink-soft">
                   Peça até {s.suggestedAsk}×
                 </p>
               </li>
@@ -105,24 +106,22 @@ export function GroupIntelligenceHero({
       ) : null}
 
       {hasChase ? (
-        <div className="fluent-card border-l-4 border-l-[#0067c0] p-5">
-          <p className="text-sm font-bold text-[#0067c0]">
+        <div className="fluent-card border-l-4 border-l-accent p-5">
+          <p className="text-sm font-bold text-accent">
             {getHeatEmoji(chaseStickers[0].level)} Corra atrás destas
           </p>
           <ul className="mt-3 space-y-2">
             {chaseStickers.slice(0, 3).map((s) => (
-              <li key={s.code} className="text-sm text-[#1b1b1b]">
+              <li key={s.code} className="text-sm text-ink">
                 <strong>{s.code}</strong>
                 <StickerHeatBadge level={s.level} demand={s.demand} compact />
-                <span className="mt-0.5 block text-[#5f5f5f]">
-                  {s.chaseTip}
-                </span>
+                <span className="mt-0.5 block text-ink-soft">{s.chaseTip}</span>
               </li>
             ))}
           </ul>
           <Link
             href="/trocas"
-            className="mt-4 inline-flex text-sm font-semibold text-[#0067c0] underline"
+            className="mt-4 inline-flex text-sm font-semibold text-accent underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
           >
             Ver quem tem repetida →
           </Link>

@@ -5,17 +5,19 @@ type StatCardProps = {
 };
 
 const accents = {
-  green: "text-[#0f7b0f]",
-  yellow: "text-[#9a6700]",
-  blue: "text-[#0067c0]",
-  white: "text-[#1b1b1b]",
+  green: "text-win-green",
+  yellow: "text-win-amber",
+  blue: "text-accent",
+  white: "text-ink",
 };
 
 export function StatCard({ label, value, accent = "white" }: StatCardProps) {
   return (
     <div className="fluent-card p-4">
-      <p className="text-xs uppercase tracking-wide text-[#5f5f5f]">{label}</p>
-      <p className={`mt-2 text-2xl font-bold ${accents[accent]}`}>{value}</p>
+      <p className="text-xs uppercase tracking-wide text-ink-soft">{label}</p>
+      <p className={`font-display mt-2 text-2xl font-bold ${accents[accent]}`}>
+        {value}
+      </p>
     </div>
   );
 }

@@ -2,6 +2,9 @@ import { redirect } from "next/navigation";
 import { createGroup, joinGroupWithCode, signOut } from "@/app/actions";
 import { requireUser } from "@/lib/auth";
 import { GroupCard } from "@/components/group-card";
+import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
+import { Input } from "@/components/ui/input";
 import { getUserGroupsWithMembers } from "@/lib/groups";
 import { buildGroupProgress } from "@/lib/group-progress";
 import { getCachedGroupTradeData } from "@/lib/group-trade-data";
@@ -39,61 +42,47 @@ export default async function GroupPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[#1b1b1b]">Grupo de troca</h1>
-        <p className="mt-2 text-sm text-[#5f5f5f]">
-          Crie grupos para família, amigos ou colegas. Todas as trocas aparecem
-          juntas na aba Trocas — sem precisar ativar um grupo por vez.
-        </p>
-      </div>
+      <p className="text-sm leading-6 text-ink-soft">
+        Crie grupos para família, amigos ou colegas. Todas as trocas aparecem
+        juntas na aba Trocas — sem precisar ativar um grupo por vez.
+      </p>
 
       {query.error ? (
-        <p className="rounded-md border border-[#f3c9c5] bg-[#fdf0ef] px-4 py-3 text-sm text-[#c42b1c]">
-          {decodeURIComponent(query.error)}
-        </p>
+        <Callout variant="error">{decodeURIComponent(query.error)}</Callout>
       ) : null}
 
       <form action={createGroupAction} className="fluent-card space-y-4 p-5">
-        <h2 className="text-lg font-semibold text-[#1b1b1b]">Criar novo grupo</h2>
-        <input
+        <h2 className="text-lg font-semibold text-ink">Criar novo grupo</h2>
+        <Input
           name="name"
           placeholder="Ex: Família Silva, Escola ABC"
-          className="w-full rounded-md border border-[#d0d0d0] bg-white px-4 py-3 text-sm text-[#1b1b1b] placeholder:text-[#9a9a9a] focus:border-[#0067c0] focus:outline-none"
           required
         />
-        <button
-          type="submit"
-          className="w-full rounded-md bg-[#0067c0] px-4 py-3 text-sm font-semibold text-white transition active:bg-[#005aa8]"
-        >
+        <Button type="submit" fullWidth>
           Criar grupo
-        </button>
+        </Button>
       </form>
 
       <form action={joinGroupWithCode} className="fluent-card space-y-4 p-5">
-        <h2 className="text-lg font-semibold text-[#1b1b1b]">
-          Entrar com código
-        </h2>
-        <p className="text-sm text-[#5f5f5f]">
+        <h2 className="text-lg font-semibold text-ink">Entrar com código</h2>
+        <p className="text-sm text-ink-soft">
           Cole o código do convite (ex.: COPA-AB12) recebido no WhatsApp.
         </p>
-        <input
+        <Input
           name="inviteCode"
           placeholder="COPA-XXXX"
-          className="w-full rounded-md border border-[#d0d0d0] bg-white px-4 py-3 text-sm uppercase text-[#1b1b1b] placeholder:normal-case placeholder:text-[#9a9a9a] focus:border-[#0067c0] focus:outline-none"
+          className="uppercase placeholder:normal-case"
           required
         />
-        <button
-          type="submit"
-          className="w-full rounded-md border border-[#0067c0] bg-white px-4 py-3 text-sm font-semibold text-[#0067c0] transition active:bg-[#eaf3fb]"
-        >
+        <Button type="submit" variant="outline" fullWidth>
           Entrar no grupo
-        </button>
+        </Button>
       </form>
 
       {groups.length > 0 ? (
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-[#1b1b1b]">Seus grupos</h2>
-          <p className="text-sm text-[#5f5f5f]">
+          <h2 className="text-lg font-semibold text-ink">Seus grupos</h2>
+          <p className="text-sm text-ink-soft">
             Toque no grupo para ver participantes e convite. Grupos novos já
             entram nas sugestões de troca automaticamente.
           </p>
@@ -109,12 +98,9 @@ export default async function GroupPage({
       ) : null}
 
       <form action={signOut} className="pt-2">
-        <button
-          type="submit"
-          className="min-h-11 w-full rounded-md border border-[#d0d0d0] bg-white px-4 py-3 text-sm font-medium text-[#5f5f5f] active:bg-[#f0f0f0]"
-        >
+        <Button type="submit" variant="ghost" fullWidth>
           Sair da conta
-        </button>
+        </Button>
       </form>
     </div>
   );

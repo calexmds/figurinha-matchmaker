@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { AuthPanel } from "@/components/auth-panel";
 import { InAppBrowserBanner } from "@/components/in-app-browser-banner";
 import { CopaBadge } from "@/components/copa-badge";
+import { Callout } from "@/components/ui/callout";
 import { APP_NAME } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 
@@ -34,17 +35,17 @@ export default async function LoginPage({
         <div className="mb-4 flex items-center gap-3">
           <CopaBadge size={48} />
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#0067c0]">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-accent">
               Copa 2026
             </p>
-            <h1 className="text-2xl font-bold text-[#1b1b1b]">{APP_NAME}</h1>
+            <h1 className="font-display text-2xl font-bold text-ink">{APP_NAME}</h1>
           </div>
         </div>
 
         {params.error ? (
-          <p className="mb-4 rounded-md border border-[#f3c9c5] bg-[#fdf0ef] px-4 py-3 text-sm text-[#c42b1c]">
+          <Callout variant="error" className="mb-4 p-4">
             Não foi possível entrar. Tente novamente com Google.
-          </p>
+          </Callout>
         ) : null}
 
         <AuthPanel nextPath={nextPath} />

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { Gabarito } from "@/components/gabarito";
 import { CollectionModeSwitcher } from "@/components/collection-mode-switcher";
+import { Callout } from "@/components/ui/callout";
 import { buildGabaritoSections } from "@/lib/stickers/catalog";
 import { getUserCollection } from "@/lib/data";
 import { getUserReservations } from "@/lib/trades";
@@ -30,15 +31,14 @@ export default async function OnboardingPage({
   return (
     <div className="space-y-4">
       {query.mode_set ? (
-        <p className="rounded-md border border-[#cfe9cf] bg-[#eef7ee] px-4 py-3 text-sm text-[#0f7b0f]">
+        <Callout variant="success" className="p-4">
           Modo configurado! Comece a marcar suas figurinhas abaixo.
-        </p>
+        </Callout>
       ) : null}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-xl font-bold text-[#1b1b1b]">Minhas figurinhas</h2>
-          <p className="mt-1 text-sm text-[#5f5f5f]">
+          <p className="text-sm leading-6 text-ink-soft">
             {sparse ? (
               <>
                 Modo rápido: marque o que <strong>falta</strong> em Preciso e o

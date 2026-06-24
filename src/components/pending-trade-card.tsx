@@ -4,7 +4,10 @@ import {
   completeTrade,
   rejectTradeAction,
 } from "@/app/actions";
+import { Button } from "@/components/ui/button";
+import { StickerChipList } from "@/components/sticker-heat-badge";
 import type { PendingTrade } from "@/lib/trades";
+import { cn } from "@/lib/cn";
 
 type PendingTradeCardProps = {
   trade: PendingTrade;
@@ -29,75 +32,72 @@ export function PendingTradeCard({ trade }: PendingTradeCardProps) {
 
   return (
     <article
-      className={`fluent-card border-2 border-dashed p-5 ${
+      className={cn(
+        "fluent-card border-2 border-dashed p-5",
         isIncomingProposal
-          ? "border-[#0067c0] bg-[#f7fbff]"
-          : "border-[#d4a017] bg-white"
-      }`}
+          ? "border-accent bg-[#f7fbff]"
+          : "border-golden bg-card",
+      )}
     >
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#9a6700]">
+        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-win-amber">
           {statusLabel}
           {trade.groupName ? (
-            <span className="ml-2 normal-case text-[#0067c0]">
+            <span className="ml-2 normal-case text-accent">
               · {trade.groupName}
             </span>
           ) : null}
         </p>
-        <h3 className="mt-1 text-xl font-bold text-[#1b1b1b]">
+        <h3 className="mt-1 text-xl font-bold text-ink">
           Com {trade.partnerName}
         </h3>
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-lg border border-dashed border-[#d4a017] bg-[#fffbf0] p-4">
-          <p className="text-xs font-semibold uppercase text-[#9a6700]">
+        <div className="rounded-xl border border-dashed border-golden/60 bg-[#fffbf0] p-4">
+          <p className="text-xs font-semibold uppercase text-win-amber">
             Você entrega
           </p>
-          <p className="mt-2 text-sm leading-6 text-[#1b1b1b]">
-            {trade.give.length > 0
-              ? trade.give.slice(0, 12).join(", ")
-              : "—"}
-            {trade.give.length > 12 ? "…" : ""}
-          </p>
+          <div className="mt-2">
+            <StickerChipList codes={trade.give} variant="give" />
+          </div>
         </div>
-        <div className="rounded-lg border border-dashed border-[#7b5ea7] bg-[#f7f3fb] p-4">
+        <div className="rounded-xl border border-dashed border-[#7b5ea7]/50 bg-[#f7f3fb] p-4">
           <p className="text-xs font-semibold uppercase text-[#7b5ea7]">
             Você recebe
           </p>
-          <p className="mt-2 text-sm leading-6 text-[#1b1b1b]">
-            {trade.receive.length > 0
-              ? trade.receive.slice(0, 12).join(", ")
-              : "—"}
-            {trade.receive.length > 12 ? "…" : ""}
-          </p>
+          <div className="mt-2">
+            <StickerChipList codes={trade.receive} variant="receive" />
+          </div>
         </div>
       </div>
 
       {isActive ? (
         <div className="mt-4 flex gap-2 text-xs">
           <span
-            className={`rounded-full px-2.5 py-1 font-semibold ${
+            className={cn(
+              "rounded-full px-2.5 py-1 font-semibold",
               trade.myConfirmed
-                ? "bg-[#e8f5e9] text-[#0f7b0f]"
-                : "bg-[#f5f5f5] text-[#5f5f5f]"
-            }`}
+                ? "bg-[#e8f5e9] text-win-green"
+                : "bg-mica text-ink-soft",
+            )}
           >
             Você {trade.myConfirmed ? "✓" : "—"}
           </span>
           <span
-            className={`rounded-full px-2.5 py-1 font-semibold ${
+            className={cn(
+              "rounded-full px-2.5 py-1 font-semibold",
               trade.partnerConfirmed
-                ? "bg-[#e8f5e9] text-[#0f7b0f]"
-                : "bg-[#f5f5f5] text-[#5f5f5f]"
-            }`}
+                ? "bg-[#e8f5e9] text-win-green"
+                : "bg-mica text-ink-soft",
+            )}
           >
             {trade.partnerName} {trade.partnerConfirmed ? "✓" : "—"}
           </span>
         </div>
       ) : null}
 
-      <p className="mt-4 text-xs leading-5 text-[#5f5f5f]">
+      <p className="mt-4 text-xs leading-5 text-ink-soft">
         {isIncomingProposal
           ? "Aceite para reservar as figurinhas nos dois lados. Recuse se não quiser esta combinação."
           : isWaitingAcceptance
@@ -112,58 +112,43 @@ export function PendingTradeCard({ trade }: PendingTradeCardProps) {
           <>
             <form action={acceptTradeAction} className="flex-1">
               <input type="hidden" name="tradeId" value={trade.id} />
-              <button
-                type="submit"
-                className="min-h-11 w-full rounded-md bg-[#0067c0] px-4 py-3 text-sm font-semibold text-white active:bg-[#005aa8]"
-              >
+              <Button type="submit" fullWidth>
                 Aceitar troca
-              </button>
+              </Button>
             </form>
             <form action={rejectTradeAction} className="flex-1">
               <input type="hidden" name="tradeId" value={trade.id} />
-              <button
-                type="submit"
-                className="min-h-11 w-full rounded-md border border-[#d0d0d0] bg-white px-4 py-3 text-sm font-semibold text-[#5f5f5f] active:bg-[#f5f5f5]"
-              >
+              <Button type="submit" variant="secondary" fullWidth>
                 Recusar
-              </button>
+              </Button>
             </form>
           </>
         ) : isWaitingAcceptance ? (
           <form action={cancelTrade} className="flex-1">
             <input type="hidden" name="tradeId" value={trade.id} />
-            <button
-              type="submit"
-              className="min-h-11 w-full rounded-md border border-[#d0d0d0] bg-white px-4 py-3 text-sm font-semibold text-[#5f5f5f] active:bg-[#f5f5f5]"
-            >
+            <Button type="submit" variant="secondary" fullWidth>
               Cancelar proposta
-            </button>
+            </Button>
           </form>
         ) : isActive ? (
           <>
             {awaitingMyConfirm ? (
               <form action={completeTrade} className="flex-1">
                 <input type="hidden" name="tradeId" value={trade.id} />
-                <button
-                  type="submit"
-                  className="min-h-11 w-full rounded-md bg-[#0f7b0f] px-4 py-3 text-sm font-semibold text-white active:bg-[#0c640c]"
-                >
+                <Button type="submit" variant="success" fullWidth>
                   Confirmar troca ✓
-                </button>
+                </Button>
               </form>
             ) : (
-              <p className="flex min-h-11 flex-1 items-center rounded-md border border-[#d4a017] bg-[#fffbf0] px-4 py-3 text-sm font-semibold text-[#9a6700]">
+              <p className="flex min-h-11 flex-1 items-center rounded-xl border border-golden/50 bg-[#fffbf0] px-4 py-3 text-sm font-semibold text-win-amber">
                 Aguardando {trade.partnerName}
               </p>
             )}
             <form action={cancelTrade} className="flex-1">
               <input type="hidden" name="tradeId" value={trade.id} />
-              <button
-                type="submit"
-                className="min-h-11 w-full rounded-md border border-[#d0d0d0] bg-white px-4 py-3 text-sm font-semibold text-[#5f5f5f] active:bg-[#f5f5f5]"
-              >
+              <Button type="submit" variant="secondary" fullWidth>
                 Cancelar
-              </button>
+              </Button>
             </form>
           </>
         ) : null}

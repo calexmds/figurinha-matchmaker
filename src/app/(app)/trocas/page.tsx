@@ -4,6 +4,9 @@ import { TradeCard } from "@/components/trade-card";
 import { PendingTradeCard } from "@/components/pending-trade-card";
 import { MarketListingPanel } from "@/components/market-listing-panel";
 import { MarketOpportunityCard } from "@/components/market-opportunity-card";
+import { ButtonLink } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
+import { EmptyState } from "@/components/ui/empty-state";
 import { getUserTradeSummary, getUserOwned } from "@/lib/data";
 import { computeAllGroupMatches } from "@/lib/multi-group-trades";
 import { getUserGroupsWithMembers } from "@/lib/groups";
@@ -43,18 +46,16 @@ export default async function TradesPage({
 
   if (groups.length === 0) {
     return (
-      <div className="rounded-lg border border-[#ecdfc0] bg-[#fbf6ea] p-6">
-        <h2 className="text-xl font-bold text-[#1b1b1b]">Trocas</h2>
-        <p className="mt-2 text-sm text-[#5f5f5f]">
-          Entre ou crie um grupo para ver sugestões de troca.
-        </p>
-        <Link
-          href="/grupo"
-          className="mt-4 inline-flex min-h-11 items-center rounded-md bg-[#0067c0] px-4 py-3 text-sm font-semibold text-white active:bg-[#005aa8]"
-        >
-          Ir para Grupo
-        </Link>
-      </div>
+      <EmptyState
+        icon="group"
+        title="Entre em um grupo para trocar"
+        description="Crie ou entre em um grupo para ver sugestões de troca com família, amigos ou colegas."
+        action={
+          <ButtonLink href="/grupo" fullWidth>
+            Ir para Grupo
+          </ButtonLink>
+        }
+      />
     );
   }
 
@@ -88,18 +89,16 @@ export default async function TradesPage({
     pendingTrades.length === 0
   ) {
     return (
-      <div className="fluent-card p-6">
-        <h2 className="text-xl font-bold text-[#1b1b1b]">Trocas</h2>
-        <p className="mt-2 text-sm text-[#5f5f5f]">
-          Marque o que você tem na aba Tenho para calcular as melhores trocas.
-        </p>
-        <Link
-          href="/onboarding"
-          className="mt-4 inline-flex min-h-11 items-center rounded-md bg-[#0067c0] px-4 py-3 text-sm font-semibold text-white active:bg-[#005aa8]"
-        >
-          Abrir figurinhas
-        </Link>
-      </div>
+      <EmptyState
+        icon="album"
+        title="Marque suas figurinhas primeiro"
+        description="Abra a aba Figurinhas e marque o que você tem, repete ou precisa. O app calcula as melhores trocas automaticamente."
+        action={
+          <ButtonLink href="/onboarding" fullWidth>
+            Abrir figurinhas
+          </ButtonLink>
+        }
+      />
     );
   }
 
@@ -160,41 +159,33 @@ export default async function TradesPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-[#1b1b1b]">Trocas</h2>
-        <p className="mt-2 text-sm text-[#5f5f5f]">
-          {groupCount === 1 ? (
-            <>
-              Grupo <strong className="text-[#1b1b1b]">{groups[0].name}</strong>
-            </>
-          ) : (
-            <>
-              <strong className="text-[#1b1b1b]">{groupCount} grupos</strong> (
-              {groupNames})
-            </>
-          )}
-          {totalMembers > 0 ? (
-            <> · {totalMembers} colecionadores no radar</>
-          ) : null}
-          {" "}— proponha trocas, negocie compra e venda, encontre pessoalmente e confirme.
-        </p>
-      </div>
+      <p className="text-sm leading-6 text-ink-soft">
+        {groupCount === 1 ? (
+          <>
+            Grupo <strong className="text-ink">{groups[0].name}</strong>
+          </>
+        ) : (
+          <>
+            <strong className="text-ink">{groupCount} grupos</strong> (
+            {groupNames})
+          </>
+        )}
+        {totalMembers > 0 ? (
+          <> · {totalMembers} colecionadores no radar</>
+        ) : null}
+        {" "}— proponha trocas, negocie compra e venda, encontre pessoalmente e
+        confirme.
+      </p>
 
       {feedback ? (
-        <p
-          className={`rounded-md border px-4 py-3 text-sm ${
-            feedbackIsError
-              ? "border-[#f3c9c5] bg-[#fdf0ef] text-[#c42b1c]"
-              : "border-[#cfe9cf] bg-[#eef7ee] text-[#0f7b0f]"
-          }`}
-        >
+        <Callout variant={feedbackIsError ? "error" : "success"}>
           {feedbackIsError ? decodeURIComponent(feedback) : feedback}
-        </p>
+        </Callout>
       ) : null}
 
       {pendingTrades.length > 0 ? (
         <section className="space-y-4">
-          <h3 className="text-base font-bold text-[#1b1b1b]">
+          <h3 className="text-base font-bold text-ink">
             Trocas abertas ({pendingTrades.length})
           </h3>
           {pendingTrades.map((trade) => (
@@ -204,34 +195,38 @@ export default async function TradesPage({
       ) : null}
 
       <section className="space-y-4">
-        <h3 className="text-base font-bold text-[#1b1b1b]">Sugestões de troca</h3>
+        <h3 className="text-base font-bold text-ink">Sugestões de troca</h3>
 
         {matches.length === 0 ? (
-          <div className="fluent-card space-y-4 p-6 text-sm text-[#5f5f5f]">
-            {diagnosticsList.length > 0 ? (
-              diagnosticsList.map((diag) => (
+          diagnosticsList.length > 0 ? (
+            <div className="fluent-card space-y-4 p-6 text-sm text-ink-soft">
+              {diagnosticsList.map((diag) => (
                 <div key={diag.groupName} className="space-y-2">
-                  <p className="font-semibold text-[#1b1b1b]">{diag.title}</p>
+                  <p className="font-display font-semibold text-ink">
+                    {diag.title}
+                  </p>
                   <p className="leading-6">{diag.detail}</p>
                 </div>
-              ))
-            ) : (
-              <>
-                <p className="font-semibold text-[#1b1b1b]">
-                  Nenhuma troca direta encontrada ainda
-                </p>
-                <p className="leading-6">
-                  Convide mais pessoas ou marque mais figurinhas em Tenho.
-                </p>
-              </>
-            )}
-            <Link
-              href="/grupo"
-              className="inline-flex min-h-10 items-center text-sm font-semibold text-[#0067c0] underline"
-            >
-              Gerenciar grupos →
-            </Link>
-          </div>
+              ))}
+              <Link
+                href="/grupo"
+                className="inline-flex min-h-10 items-center text-sm font-semibold text-accent underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+              >
+                Gerenciar grupos →
+              </Link>
+            </div>
+          ) : (
+            <EmptyState
+              icon="trade"
+              title="Nenhuma troca direta ainda"
+              description="Convide mais pessoas para o grupo ou marque mais figurinhas. Quanto mais completo o cadastro, melhor o match."
+              action={
+                <ButtonLink href="/grupo" variant="outline" fullWidth>
+                  Gerenciar grupos
+                </ButtonLink>
+              }
+            />
+          )
         ) : (
           <div className="space-y-4">
             {matches.map((match, index) => (
@@ -255,10 +250,10 @@ export default async function TradesPage({
 
       <section className="space-y-4">
         <div>
-          <h3 className="text-base font-bold text-[#1b1b1b]">
+          <h3 className="text-base font-bold text-ink">
             Comprar e vender
           </h3>
-          <p className="mt-1 text-sm text-[#5f5f5f]">
+          <p className="mt-1 text-sm text-ink-soft">
             Anuncie repetidas ou figurinhas que quer comprar. O preço é
             combinado no WhatsApp — sem pagamento pelo app.
           </p>
@@ -266,7 +261,7 @@ export default async function TradesPage({
 
         {marketData.opportunities.length > 0 ? (
           <div className="space-y-4">
-            <h4 className="text-sm font-semibold uppercase tracking-wide text-[#5f5f5f]">
+            <h4 className="text-sm font-semibold uppercase tracking-wide text-ink-soft">
               Oportunidades no grupo ({marketData.opportunities.length})
             </h4>
             {marketData.opportunities.map((opportunity) => (

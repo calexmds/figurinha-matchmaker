@@ -20,11 +20,11 @@ function AppShellInner({
   usePrefetchAppRoutes();
 
   return (
-    <div className="flex min-h-dvh flex-col bg-[#f3f3f3]">
-      <header className="relative sticky top-0 z-20">
+    <div className="flex min-h-dvh flex-col bg-mica">
+      <div className="relative sticky top-0 z-20">
         <AppHeader pathname={pathname} />
         <NavProgressBar />
-      </header>
+      </div>
       <main className="mx-auto w-full max-w-lg flex-1 px-4 py-4 pb-28">
         {children}
       </main>

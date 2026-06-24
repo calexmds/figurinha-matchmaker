@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { getButtonClassName } from "@/components/ui/button";
+
 type AuthPanelProps = {
   nextPath: string;
   groupName?: string;
@@ -12,29 +14,32 @@ export function AuthPanel({ nextPath, groupName, compact }: AuthPanelProps) {
   return (
     <div className={compact ? "space-y-4" : "space-y-5"}>
       {groupName ? (
-        <p className="text-sm text-[#5f5f5f]">
+        <p className="text-sm text-ink-soft">
           Entre para participar do grupo{" "}
-          <strong className="text-[#1b1b1b]">{groupName}</strong>.
+          <strong className="text-ink">{groupName}</strong>.
         </p>
       ) : null}
 
       <a
         href={googleHref}
-        className="flex min-h-12 w-full items-center justify-center gap-3 rounded-md border border-[#0067c0] bg-[#0067c0] px-4 py-3 text-sm font-semibold text-white transition active:bg-[#005aa8]"
+        className={getButtonClassName("primary", { fullWidth: true, className: "gap-3" })}
       >
         <GoogleIcon />
         Entrar com Google
       </a>
 
-      <p className="text-center text-[11px] leading-4 text-[#8a8a8a]">
+      <p className="text-center text-[11px] leading-4 text-ink-muted">
         Use a conta Google que você já tem no celular. Na primeira vez sua conta
         é criada automaticamente.
       </p>
 
       {!compact ? (
-        <p className="text-center text-xs text-[#8a8a8a]">
+        <p className="text-center text-xs text-ink-muted">
           Recebeu convite?{" "}
-          <Link href="/grupo" className="font-semibold text-[#0067c0] underline">
+          <Link
+            href="/grupo"
+            className="font-semibold text-accent underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+          >
             Entrar com código
           </Link>
         </p>
