@@ -16,11 +16,22 @@ App de troca de figurinhas da Copa do Mundo 2026 com match automático dentro de
 
 1. Crie um projeto em [supabase.com](https://supabase.com)
 2. No **SQL Editor**, execute na ordem:
-   - `supabase/schema.sql`
+   - `supabase/schema.sql` *(projeto novo)*
    - `supabase/seed.sql`
-   - `supabase/migrations/002_user_needs.sql` *(se o projeto já existia antes desta versão)*
-   - `supabase/migrations/003_trades.sql` *(trocas combinadas / pendentes)*
-   - `supabase/migrations/004_group_trade_snapshot.sql` *(match de trocas entre membros)*
+   - Migrations incrementais (projetos já existentes ou após schema base):
+
+| Arquivo | Conteúdo |
+|---------|----------|
+| `002_user_needs.sql` | Lista explícita de Preciso |
+| `003_trades.sql` | Trocas combinadas / pendentes |
+| `004_group_trade_snapshot.sql` | RPC de snapshot para match no grupo |
+| `005_groups_delete.sql` | Dono pode excluir grupo |
+| `006_tenho_collection_snapshot.sql` | Snapshot Tenho no match |
+| `007_phase0_trust.sql` | Trocas bilaterais, RLS, join seguro |
+| `008_sticker_listings.sql` | Anúncios compra/venda |
+| `009_collection_entry_mode.sql` | Modo have / sparse no perfil |
+| `010_trade_dual_confirm.sql` | Confirmação dupla na conclusão |
+
 3. Em **Authentication → Providers**, ative **Google** e **Email** (magic link)
 4. Em **Authentication → URL Configuration**, adicione:
    - Site URL: `https://www.figurinhamatchmaker.com.br`
@@ -56,6 +67,8 @@ npm run dev
 ```bash
 npm run dev          # desenvolvimento
 npm run build        # build produção
+npm test             # testes unitários (Vitest)
+npm run test:watch   # testes em modo watch
 npm run db:seed      # regenerar supabase/seed.sql (980 figurinhas)
 ```
 
@@ -63,8 +76,8 @@ npm run db:seed      # regenerar supabase/seed.sql (980 figurinhas)
 
 1. Landing → Entrar com Google ou e-mail
 2. Criar grupo ou abrir link `/join/CODIGO` (entra no grupo automaticamente após login)
-3. Marcar repetidas e preciso no gabarito
-4. Ver ranking de trocas no grupo
+3. Escolher modo de cadastro (Tenho ou álbum quase completo) e marcar figurinhas no gabarito
+4. Ver sugestões de troca, propor/aceitar/confirmar trocas bilaterais
 5. Compartilhar convite ou proposta no WhatsApp
 
 ## Catálogo
@@ -81,7 +94,7 @@ src/app/
   join/[code]/          Convite de grupo
   auth/callback/        OAuth callback
   (app)/home/           Dashboard
-  (app)/onboarding/     Cadastro de figurinhas
+  (app)/onboarding/     Cadastro de figurinhas (gabarito)
   (app)/grupo/          Grupos e convite
-  (app)/trocas/         Ranking de match
+  (app)/trocas/         Match, propostas e marketplace
 ```

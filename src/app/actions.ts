@@ -19,10 +19,6 @@ import {
   rejectTrade,
 } from "@/lib/trades";
 import {
-  parseNeedsInput,
-  parseStickerInput,
-} from "@/lib/stickers/parse";
-import {
   resolveStickerId,
 } from "@/lib/market-listings";
 import {
@@ -37,6 +33,10 @@ import {
 } from "@/lib/stickers/collection-mode";
 import type { CollectionEntryMode } from "@/lib/types";
 import { applyReservationsToLists, getUserReservations } from "@/lib/trades";
+import {
+  persistStickerEdits,
+  type StickerEdit,
+} from "@/lib/stickers/persist-edits";
 
 export async function signInWithGoogle(returnTo?: string) {
   const supabase = await createClient();
@@ -145,112 +145,6 @@ export async function createGroup(formData: FormData) {
   return { error: "Não foi possível criar o grupo. Tente novamente." };
 }
 
-export async function saveCollection(formData: FormData) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
-
-  const duplicatesRaw = String(formData.get("duplicates") ?? "");
-  const needsRaw = String(formData.get("needs") ?? "");
-
-  if (!duplicatesRaw.trim() && !needsRaw.trim()) {
-    return { error: "Informe repetidas ou figurinhas que precisa." };
-  }
-
-  const parsed = parseStickerInput(duplicatesRaw);
-  const { error: deleteDuplicatesError } = await supabase
-    .from("user_stickers")
-    .delete()
-    .eq("user_id", user.id);
-
-  if (deleteDuplicatesError) {
-    return { error: "Erro ao atualizar repetidas." };
-  }
-
-  if (parsed.length > 0) {
-    const codes = parsed.map((item) => item.code);
-    const { data: stickerRows, error: stickerError } = await supabase
-      .from("stickers")
-      .select("id, code")
-      .in("code", codes);
-
-    if (stickerError || !stickerRows) {
-      return { error: "Erro ao buscar figurinhas." };
-    }
-
-    const codeToId = new Map(stickerRows.map((row) => [row.code, row.id]));
-    const inserts = parsed
-      .filter((item) => codeToId.has(item.code))
-      .map((item) => ({
-        user_id: user.id,
-        sticker_id: codeToId.get(item.code)!,
-        quantity: item.quantity,
-        updated_at: new Date().toISOString(),
-      }));
-
-    const { error: insertError } = await supabase
-      .from("user_stickers")
-      .insert(inserts);
-
-    if (insertError) {
-      return { error: "Erro ao salvar repetidas." };
-    }
-  }
-
-  const needCodes = parseNeedsInput(needsRaw);
-  const { error: deleteNeedsError } = await supabase
-    .from("user_needs")
-    .delete()
-    .eq("user_id", user.id);
-
-  if (deleteNeedsError) {
-    return { error: "Erro ao atualizar lista de preciso." };
-  }
-
-  if (needCodes.length > 0) {
-    const { data: stickerRows, error: stickerError } = await supabase
-      .from("stickers")
-      .select("id, code")
-      .in("code", needCodes);
-
-    if (stickerError || !stickerRows) {
-      return { error: "Erro ao buscar figurinhas." };
-    }
-
-    const inserts = stickerRows.map((row) => ({
-      user_id: user.id,
-      sticker_id: row.id,
-      updated_at: new Date().toISOString(),
-    }));
-
-    const { error: insertNeedsError } = await supabase
-      .from("user_needs")
-      .insert(inserts);
-
-    if (insertNeedsError) {
-      return { error: "Erro ao salvar figurinhas que precisa." };
-    }
-  }
-
-  revalidatePath("/home");
-  revalidatePath("/trocas");
-  revalidatePath("/onboarding");
-  redirect("/home");
-}
-
-/** @deprecated Use saveCollection */
-export async function saveStickers(formData: FormData) {
-  return saveCollection(formData);
-}
-
-import {
-  persistStickerEdits,
-  type StickerEdit,
-} from "@/lib/stickers/persist-edits";
-
 export async function applyStickerEdits(edits: StickerEdit[]) {
   const supabase = await createClient();
   const {
@@ -260,35 +154,6 @@ export async function applyStickerEdits(edits: StickerEdit[]) {
   if (!user) return { error: "Sessão expirada. Entre novamente." };
 
   return persistStickerEdits(supabase, user.id, edits);
-}
-
-export async function setActiveGroup(groupId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
-
-  const { data: membership } = await supabase
-    .from("group_members")
-    .select("id")
-    .eq("group_id", groupId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!membership) {
-    return { error: "Você não faz parte deste grupo." };
-  }
-
-  await supabase
-    .from("profiles")
-    .update({ active_group_id: groupId })
-    .eq("id", user.id);
-
-  revalidatePath("/home");
-  revalidatePath("/grupo");
-  revalidatePath("/trocas");
 }
 
 export async function updateGroupName(formData: FormData) {
