@@ -28,6 +28,7 @@ type GabaritoProps = {
   sections: GabaritoSection[];
   initialOwned: Record<string, number>;
   entryMode?: CollectionEntryMode;
+  initialTab?: ViewTab;
   initialReservedGive?: string[];
   initialReservedGiveCounts?: Record<string, number>;
   initialReservedReceive?: string[];
@@ -38,6 +39,7 @@ export function Gabarito({
   sections,
   initialOwned,
   entryMode = "have",
+  initialTab,
   initialReservedGive = [],
   initialReservedGiveCounts = {},
   initialReservedReceive = [],
@@ -48,7 +50,11 @@ export function Gabarito({
   const reservedGiveQty = useRef(initialReservedGiveCounts);
   const reservedReceive = useRef(new Set(initialReservedReceive));
   const heatLevels = useRef(initialHeatLevels);
-  const [tab, setTab] = useState<ViewTab>(defaultGabaritoTab(entryMode));
+  const [tab, setTab] = useState<ViewTab>(
+    initialTab ?? defaultGabaritoTab(entryMode),
+  );
+  const [precisoShowAll, setPrecisoShowAll] = useState(false);
+  const [repetidasShowAll, setRepetidasShowAll] = useState(false);
   const [owned, setOwned] = useState<Record<string, number>>(initialOwned);
   const [openSection, setOpenSection] = useState<string | null>(
     sections[1]?.id ?? sections[0]?.id ?? null,
@@ -57,6 +63,12 @@ export function Gabarito({
   const [status, setStatus] = useState<SaveStatus>("idle");
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    setTab(initialTab ?? defaultGabaritoTab(entryMode));
+    setPrecisoShowAll(false);
+    setRepetidasShowAll(false);
+  }, [entryMode, initialTab]);
 
   const pending = useRef<Map<string, StickerEdit>>(new Map());
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -274,7 +286,7 @@ export function Gabarito({
     ? ([
         { id: "preciso" as const, label: "Preciso", editable: true },
         { id: "repetidas" as const, label: "Repetidas", editable: true },
-        { id: "tenho" as const, label: "Tenho", editable: false },
+        { id: "tenho" as const, label: "Resumo", editable: false },
       ] as const)
     : ([
         { id: "tenho" as const, label: "Tenho", editable: true },
@@ -301,7 +313,14 @@ export function Gabarito({
 
   const cellVisible = (code: string) => {
     const qty = owned[code] ?? (sparse ? 1 : 0);
-    if (sparse && (tab === "preciso" || tab === "repetidas")) return true;
+    if (sparse && tab === "preciso") {
+      if (q || precisoShowAll) return true;
+      return qty < 1;
+    }
+    if (sparse && tab === "repetidas") {
+      if (q || repetidasShowAll) return true;
+      return qty > 1;
+    }
     if (tab === "tenho") return true;
     if (tab === "repetidas") return qty > 1;
     return qty < 1;
@@ -329,10 +348,14 @@ export function Gabarito({
 
   const helperLine = sparse
     ? tab === "preciso"
-      ? "Toque nas figurinhas que você NÃO tem. Toque de novo para desmarcar."
+      ? precisoShowAll
+        ? "Toque nas que você NÃO tem. As acinzentadas já contam como no álbum."
+        : "Mostrando só o que falta. Use busca ou “Ver álbum” para navegar pelo resto."
       : tab === "repetidas"
-        ? "Toque nas que você tem repetida (+1 extra). Segure para ajustar a quantidade."
-        : "Resumo do álbum — assumimos que você tem tudo, exceto o marcado em Preciso."
+        ? repetidasShowAll
+          ? "Toque nas repetidas (+1 extra). Segure para ajustar a quantidade."
+          : "Mostrando só repetidas marcadas. Toque em “Ver álbum” para adicionar outras."
+        : "Visão geral — assumimos que você tem tudo, exceto o marcado em Preciso."
     : tab === "tenho"
       ? "Toque para marcar que você tem (+1). Segure para ajustar a quantidade. O app calcula repetidas e preciso sozinho."
       : tab === "repetidas"
@@ -341,14 +364,6 @@ export function Gabarito({
 
   return (
     <div className="space-y-4">
-      {sparse ? (
-        <Callout variant="success" title="Modo álbum quase completo" className="px-4 py-3">
-          Comece em <strong className="text-win-amber">Preciso</strong> (o que falta) e
-          depois <strong className="text-win-green">Repetidas</strong>. O resto já conta
-          como no álbum.
-        </Callout>
-      ) : null}
-
       {reservedCount > 0 ? (
         <Callout variant="warning" className="px-4 py-3">
           <strong>{reservedCount}</strong> figurinha
@@ -368,7 +383,11 @@ export function Gabarito({
             <button
               key={item.id}
               type="button"
-              onClick={() => setTab(item.id)}
+              onClick={() => {
+                setTab(item.id);
+                if (item.id === "preciso") setPrecisoShowAll(false);
+                if (item.id === "repetidas") setRepetidasShowAll(false);
+              }}
               className={cn(
                 "min-h-10 rounded-lg text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
                 tab === item.id
@@ -404,6 +423,38 @@ export function Gabarito({
               className="h-full rounded-full transition-all"
               style={{ width: `${progressPct}%`, background: accent }}
             />
+          </div>
+        ) : null}
+
+        {(sparse && tab === "preciso") || (sparse && tab === "repetidas") ? (
+          <div className="mt-2 grid grid-cols-2 gap-1 rounded-lg border border-line bg-mica p-0.5">
+            {tab === "preciso" ? (
+              <>
+                <FilterChip
+                  active={!precisoShowAll}
+                  onClick={() => setPrecisoShowAll(false)}
+                  label={`Só faltando${needCount > 0 ? ` (${needCount})` : ""}`}
+                />
+                <FilterChip
+                  active={precisoShowAll}
+                  onClick={() => setPrecisoShowAll(true)}
+                  label="Ver álbum"
+                />
+              </>
+            ) : (
+              <>
+                <FilterChip
+                  active={!repetidasShowAll}
+                  onClick={() => setRepetidasShowAll(false)}
+                  label={`Só repetidas${repetidasTypes > 0 ? ` (${repetidasTypes})` : ""}`}
+                />
+                <FilterChip
+                  active={repetidasShowAll}
+                  onClick={() => setRepetidasShowAll(true)}
+                  label="Ver álbum"
+                />
+              </>
+            )}
           </div>
         ) : null}
 
@@ -453,7 +504,7 @@ export function Gabarito({
       ) : null}
 
       <div className="space-y-2">
-        {filteredSections.length === 0 ? (
+        {filteredSections.length === 0 && q ? (
           <EmptyState
             icon="album"
             title="Nada encontrado"
@@ -461,12 +512,21 @@ export function Gabarito({
             className="py-8"
           />
         ) : null}
+        {sparse &&
+        tab === "preciso" &&
+        !precisoShowAll &&
+        !q &&
+        needCount === 0 ? (
+          <EmptyState
+            icon="album"
+            title="Nenhuma figurinha faltando"
+            description="Se faltar alguma, use a busca acima ou toque em “Ver álbum” para marcar."
+            className="py-8"
+          />
+        ) : null}
         {filteredSections.map((section) => {
           const visibleCells = section.cells.filter((c) => cellVisible(c.code));
-          if (visibleCells.length === 0 && tab === "repetidas" && !sparse) {
-            return null;
-          }
-          if (visibleCells.length === 0 && tab === "preciso" && !sparse) {
+          if (visibleCells.length === 0) {
             return null;
           }
           const isOpen = q ? true : openSection === section.id;
@@ -603,11 +663,13 @@ export function Gabarito({
             aba Tenho.
           </p>
         ) : null}
-        {tab === "repetidas" && sparse && repetidasTypes === 0 ? (
-          <p className="rounded-lg border border-line bg-card p-6 text-center text-sm text-ink-soft">
-            Nenhuma repetida marcada. Toque nas figurinhas que você tem a mais —
-            ou pule se não tiver repetidas agora.
-          </p>
+        {tab === "repetidas" && sparse && repetidasTypes === 0 && !repetidasShowAll ? (
+          <EmptyState
+            icon="album"
+            title="Nenhuma repetida marcada"
+            description="Toque em “Ver álbum” para marcar extras — ou pule se não tiver repetidas agora."
+            className="py-8"
+          />
         ) : null}
         {tab === "preciso" && !sparse && needCount === TOTAL_STICKERS ? (
           <Callout variant="warning" className="p-6 text-center">
@@ -633,6 +695,29 @@ export function Gabarito({
         />
       ) : null}
     </div>
+  );
+}
+
+function FilterChip({
+  active,
+  onClick,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "min-h-9 rounded-md px-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+        active ? "bg-card text-ink shadow-sm" : "text-ink-soft",
+      )}
+    >
+      {label}
+    </button>
   );
 }
 

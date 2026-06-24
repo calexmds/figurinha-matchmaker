@@ -1,4 +1,5 @@
 import { setCollectionEntryMode } from "@/app/actions";
+import { COLLECTION_MODE_COPY } from "@/lib/collection-mode-copy";
 import type { CollectionEntryMode } from "@/lib/types";
 import { cn } from "@/lib/cn";
 
@@ -25,29 +26,8 @@ export function CollectionModeWelcome({ compact }: CollectionModeWelcomeProps) {
       ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <ModeCard
-          mode="have"
-          title="Estou montando o álbum"
-          subtitle="Marco o que já tenho"
-          bullets={[
-            "Ideal se está começando",
-            "Ou tem menos da metade completo",
-            "Toque em cada figurinha que possui",
-          ]}
-          variant="accent"
-        />
-        <ModeCard
-          mode="sparse"
-          title="Álbum quase completo"
-          subtitle="Marco só o que falta e repetidas"
-          bullets={[
-            "Ideal se faltam poucas figurinhas",
-            "Assume que você tem o resto",
-            "Muito mais rápido com ~30 faltando",
-          ]}
-          variant="green"
-          featured
-        />
+        <ModeCard mode="have" featured={false} />
+        <ModeCard mode="sparse" featured />
       </div>
     </div>
   );
@@ -55,20 +35,14 @@ export function CollectionModeWelcome({ compact }: CollectionModeWelcomeProps) {
 
 function ModeCard({
   mode,
-  title,
-  subtitle,
-  bullets,
-  variant,
   featured,
 }: {
   mode: CollectionEntryMode;
-  title: string;
-  subtitle: string;
-  bullets: string[];
-  variant: "accent" | "green";
   featured?: boolean;
 }) {
-  const isGreen = variant === "green";
+  if (mode !== "have" && mode !== "sparse") return null;
+  const copy = COLLECTION_MODE_COPY[mode];
+  const isGreen = mode === "sparse";
 
   return (
     <form action={setCollectionEntryMode}>
@@ -96,17 +70,17 @@ function ModeCard({
         >
           {isGreen ? <BoltIcon /> : <AlbumIcon />}
         </span>
-        <h3 className="font-display mt-3 text-lg font-bold text-ink">{title}</h3>
+        <h3 className="font-display mt-3 text-lg font-bold text-ink">{copy.title}</h3>
         <p
           className={cn(
             "mt-1 text-sm font-medium",
             isGreen ? "text-win-green" : "text-accent",
           )}
         >
-          {subtitle}
+          {copy.subtitle}
         </p>
         <ul className="mt-4 flex-1 space-y-2 text-sm leading-5 text-ink-soft">
-          {bullets.map((line) => (
+          {copy.bullets.map((line) => (
             <li key={line} className="flex gap-2">
               <span
                 className={isGreen ? "text-win-green" : "text-accent"}

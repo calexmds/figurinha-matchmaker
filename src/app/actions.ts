@@ -567,7 +567,7 @@ export async function setCollectionEntryMode(formData: FormData) {
   }
 
   revalidatePath("/onboarding");
-  redirect("/onboarding?mode_set=1");
+  redirect(`/onboarding?mode_set=${mode}`);
 }
 
 export async function switchCollectionEntryMode(formData: FormData) {
@@ -606,5 +606,5 @@ export async function switchCollectionEntryMode(formData: FormData) {
   revalidatePath("/onboarding");
   revalidatePath("/home");
   revalidatePath("/trocas");
-  redirect("/onboarding?mode_set=1");
+  redirect(`/onboarding?mode_set=${target}`);
 }
