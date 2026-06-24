@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { getUserReservations } from "@/lib/trades";
 import { tradeableQuantity } from "@/lib/stickers/collection";
+import { getCollectionEntryMode } from "@/lib/stickers/collection-mode";
 
 export type StickerEdit = {
   code: string;
@@ -13,6 +14,88 @@ export type PersistResult =
   | { ok: true }
   | { error: string; detail?: string };
 
+async function persistSparseEdit(
+  supabase: SupabaseClient,
+  userId: string,
+  stickerId: string,
+  quantity: number,
+  now: string,
+  upserts: Array<{
+    user_id: string;
+    sticker_id: string;
+    quantity: number;
+    updated_at: string;
+  }>,
+  deleteStickerIds: string[],
+  needDeleteIds: string[],
+  needUpserts: Array<{
+    user_id: string;
+    sticker_id: string;
+    updated_at: string;
+  }>,
+) {
+  if (quantity <= 0) {
+    deleteStickerIds.push(stickerId);
+    needUpserts.push({
+      user_id: userId,
+      sticker_id: stickerId,
+      updated_at: now,
+    });
+    return;
+  }
+
+  needDeleteIds.push(stickerId);
+
+  if (quantity === 1) {
+    deleteStickerIds.push(stickerId);
+    return;
+  }
+
+  upserts.push({
+    user_id: userId,
+    sticker_id: stickerId,
+    quantity,
+    updated_at: now,
+  });
+}
+
+async function persistHaveEdit(
+  stickerId: string,
+  userId: string,
+  quantity: number,
+  now: string,
+  upserts: Array<{
+    user_id: string;
+    sticker_id: string;
+    quantity: number;
+    updated_at: string;
+  }>,
+  deleteIds: string[],
+  needDeleteIds: string[],
+  needUpserts: Array<{
+    user_id: string;
+    sticker_id: string;
+    updated_at: string;
+  }>,
+) {
+  if (quantity > 0) {
+    upserts.push({
+      user_id: userId,
+      sticker_id: stickerId,
+      quantity,
+      updated_at: now,
+    });
+    needDeleteIds.push(stickerId);
+  } else {
+    deleteIds.push(stickerId);
+    needUpserts.push({
+      user_id: userId,
+      sticker_id: stickerId,
+      updated_at: now,
+    });
+  }
+}
+
 export async function persistStickerEdits(
   supabase: SupabaseClient,
   userId: string,
@@ -20,6 +103,9 @@ export async function persistStickerEdits(
 ): Promise<PersistResult> {
   if (!Array.isArray(edits) || edits.length === 0) return { ok: true };
   if (edits.length > 500) return { error: "Muitas alterações de uma vez." };
+
+  const entryMode = await getCollectionEntryMode(supabase, userId);
+  const sparse = entryMode === "sparse";
 
   const normalized = edits.map((e) => ({
     code: e.code.trim().toUpperCase(),
@@ -79,21 +165,29 @@ export async function persistStickerEdits(
     const stickerId = codeToId.get(edit.code);
     if (!stickerId) continue;
 
-    if (edit.quantity > 0) {
-      upserts.push({
-        user_id: userId,
-        sticker_id: stickerId,
-        quantity: edit.quantity,
-        updated_at: now,
-      });
-      needDeleteIds.push(stickerId);
+    if (sparse) {
+      await persistSparseEdit(
+        supabase,
+        userId,
+        stickerId,
+        edit.quantity,
+        now,
+        upserts,
+        deleteIds,
+        needDeleteIds,
+        needUpserts,
+      );
     } else {
-      deleteIds.push(stickerId);
-      needUpserts.push({
-        user_id: userId,
-        sticker_id: stickerId,
-        updated_at: now,
-      });
+      await persistHaveEdit(
+        stickerId,
+        userId,
+        edit.quantity,
+        now,
+        upserts,
+        deleteIds,
+        needDeleteIds,
+        needUpserts,
+      );
     }
   }
 

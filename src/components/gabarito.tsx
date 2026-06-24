@@ -6,10 +6,12 @@ import type { GabaritoSection } from "@/lib/stickers/catalog";
 import {
   countOwnedTypes,
   countRepetidasTotal,
+  defaultGabaritoTab,
   deriveNeeds,
+  isSparseMode,
   tradeableQuantity,
 } from "@/lib/stickers/collection";
-import type { HeatLevel } from "@/lib/types";
+import type { CollectionEntryMode, HeatLevel } from "@/lib/types";
 import { getHeatEmoji } from "@/lib/group-intelligence";
 import { TOTAL_STICKERS } from "@/lib/constants";
 
@@ -19,6 +21,7 @@ type SaveStatus = "idle" | "saving" | "saved" | "error";
 type GabaritoProps = {
   sections: GabaritoSection[];
   initialOwned: Record<string, number>;
+  entryMode?: CollectionEntryMode;
   initialReservedGive?: string[];
   initialReservedGiveCounts?: Record<string, number>;
   initialReservedReceive?: string[];
@@ -28,16 +31,18 @@ type GabaritoProps = {
 export function Gabarito({
   sections,
   initialOwned,
+  entryMode = "have",
   initialReservedGive = [],
   initialReservedGiveCounts = {},
   initialReservedReceive = [],
   initialHeatLevels = {},
 }: GabaritoProps) {
+  const sparse = isSparseMode(entryMode);
   const reservedGive = useRef(new Set(initialReservedGive));
   const reservedGiveQty = useRef(initialReservedGiveCounts);
   const reservedReceive = useRef(new Set(initialReservedReceive));
   const heatLevels = useRef(initialHeatLevels);
-  const [tab, setTab] = useState<ViewTab>("tenho");
+  const [tab, setTab] = useState<ViewTab>(defaultGabaritoTab(entryMode));
   const [owned, setOwned] = useState<Record<string, number>>(initialOwned);
   const [openSection, setOpenSection] = useState<string | null>(
     sections[1]?.id ?? sections[0]?.id ?? null,
@@ -163,20 +168,37 @@ export function Gabarito({
       }
       setOwned((prev) => {
         const next = { ...prev };
-        if (q === 0) delete next[code];
-        else next[code] = q;
+        if (sparse) {
+          next[code] = q;
+        } else if (q === 0) {
+          delete next[code];
+        } else {
+          next[code] = q;
+        }
         return next;
       });
       queueEdit(code, q);
     },
-    [queueEdit, reservationBlock],
+    [queueEdit, reservationBlock, sparse],
   );
 
   const tapCell = useCallback(
     (code: string) => {
-      if (tab !== "tenho") return;
       setOwned((prev) => {
-        const nextQty = (prev[code] ?? 0) + 1;
+        const current = prev[code] ?? (sparse ? 1 : 0);
+        let nextQty = current;
+
+        if (sparse && tab === "preciso") {
+          nextQty = current >= 1 ? 0 : 1;
+        } else if (sparse && tab === "repetidas") {
+          if (current < 1) return prev;
+          nextQty = current === 1 ? 2 : current + 1;
+        } else if (tab === "tenho") {
+          nextQty = current + 1;
+        } else {
+          return prev;
+        }
+
         const block = reservationBlock(code, nextQty);
         if (block) {
           setErrorDetail(block);
@@ -184,16 +206,27 @@ export function Gabarito({
           return prev;
         }
         queueEdit(code, nextQty);
+        if (sparse) {
+          return { ...prev, [code]: nextQty };
+        }
+        if (nextQty === 0) {
+          const next = { ...prev };
+          delete next[code];
+          return next;
+        }
         return { ...prev, [code]: nextQty };
       });
     },
-    [tab, queueEdit, reservationBlock],
+    [tab, queueEdit, reservationBlock, sparse],
   );
+
+  const isEditableTab =
+    tab === "tenho" ? !sparse : sparse && (tab === "preciso" || tab === "repetidas");
 
   const lastTapRef = useRef<{ code: string; at: number } | null>(null);
 
   function handlePointerDown(code: string) {
-    if (tab !== "tenho") return;
+    if (!isEditableTab) return;
     longPressFired.current = false;
     pressTimer.current = setTimeout(() => {
       longPressFired.current = true;
@@ -220,14 +253,28 @@ export function Gabarito({
     tapCell(code);
   }
 
-  const ownedTypes = countOwnedTypes(owned);
+  const needCount = derivedNeeds.length;
+  const ownedTypes = sparse
+    ? TOTAL_STICKERS - needCount
+    : countOwnedTypes(owned);
   const repetidasTotal = countRepetidasTotal(owned);
   const repetidasTypes = Object.values(owned).filter((q) => q > 1).length;
-  const needCount = derivedNeeds.length;
   const progressPct =
     TOTAL_STICKERS > 0
       ? Math.round((ownedTypes / TOTAL_STICKERS) * 100)
       : 0;
+
+  const tabConfig = sparse
+    ? ([
+        { id: "preciso" as const, label: "Preciso", editable: true },
+        { id: "repetidas" as const, label: "Repetidas", editable: true },
+        { id: "tenho" as const, label: "Tenho", editable: false },
+      ] as const)
+    : ([
+        { id: "tenho" as const, label: "Tenho", editable: true },
+        { id: "repetidas" as const, label: "Repetidas", editable: false },
+        { id: "preciso" as const, label: "Preciso", editable: false },
+      ] as const);
 
   const accent =
     tab === "tenho" ? "#0067c0" : tab === "repetidas" ? "#0f7b0f" : "#9a6700";
@@ -247,7 +294,8 @@ export function Gabarito({
     : sections;
 
   const cellVisible = (code: string) => {
-    const qty = owned[code] ?? 0;
+    const qty = owned[code] ?? (sparse ? 1 : 0);
+    if (sparse && (tab === "preciso" || tab === "repetidas")) return true;
     if (tab === "tenho") return true;
     if (tab === "repetidas") return qty > 1;
     return qty < 1;
@@ -255,7 +303,7 @@ export function Gabarito({
 
   const sectionCount = (section: GabaritoSection) =>
     section.cells.filter((c) => {
-      const qty = owned[c.code] ?? 0;
+      const qty = owned[c.code] ?? (sparse ? 1 : 0);
       if (tab === "tenho") return qty > 0;
       if (tab === "repetidas") return qty > 1;
       return qty < 1;
@@ -266,13 +314,20 @@ export function Gabarito({
 
   const statsLine =
     tab === "tenho"
-      ? `${ownedTypes} de ${TOTAL_STICKERS} marcadas`
+      ? sparse
+        ? `${ownedTypes} no álbum · ${repetidasTypes} com repetida`
+        : `${ownedTypes} de ${TOTAL_STICKERS} marcadas`
       : tab === "repetidas"
         ? `${repetidasTotal} repetida(s) · ${repetidasTypes} tipos`
         : `Faltam ${needCount} de ${TOTAL_STICKERS}`;
 
-  const helperLine =
-    tab === "tenho"
+  const helperLine = sparse
+    ? tab === "preciso"
+      ? "Toque nas figurinhas que você NÃO tem. Toque de novo para desmarcar."
+      : tab === "repetidas"
+        ? "Toque nas que você tem repetida (+1 extra). Segure para ajustar a quantidade."
+        : "Resumo do álbum — assumimos que você tem tudo, exceto o marcado em Preciso."
+    : tab === "tenho"
       ? "Toque para marcar que você tem (+1). Segure para ajustar a quantidade. O app calcula repetidas e preciso sozinho."
       : tab === "repetidas"
         ? "Somente leitura — figurinhas com mais de 1 cópia (extras para trocar)."
@@ -280,6 +335,20 @@ export function Gabarito({
 
   return (
     <div className="space-y-4">
+      {sparse ? (
+        <div className="rounded-xl border border-[#0f7b0f]/25 bg-gradient-to-r from-[#f4fbf4] to-white px-4 py-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-[#0f7b0f]">
+            Modo álbum quase completo
+          </p>
+          <p className="mt-1 text-sm leading-5 text-[#5f5f5f]">
+            Comece em <strong className="text-[#9a6700]">Preciso</strong> (o que
+            falta) e depois{" "}
+            <strong className="text-[#0f7b0f]">Repetidas</strong>. O resto já
+            conta como no álbum.
+          </p>
+        </div>
+      ) : null}
+
       {reservedCount > 0 ? (
         <div className="rounded-lg border border-dashed border-[#d4a017] bg-[#fffbf0] px-4 py-3 text-sm text-[#9a6700]">
           <strong>{reservedCount}</strong> figurinha
@@ -296,13 +365,7 @@ export function Gabarito({
 
       <div className="sticky top-[60px] z-10 -mx-4 border-b border-[#e6e6e6] bg-white px-4 py-2">
         <div className="grid grid-cols-3 gap-1 rounded-lg border border-[#e6e6e6] bg-[#ededed] p-1">
-          {(
-            [
-              { id: "tenho" as const, label: "Tenho", editable: true },
-              { id: "repetidas" as const, label: "Repetidas", editable: false },
-              { id: "preciso" as const, label: "Preciso", editable: false },
-            ] as const
-          ).map((item) => (
+          {tabConfig.map((item) => (
             <button
               key={item.id}
               type="button"
@@ -334,14 +397,14 @@ export function Gabarito({
         </div>
         <div className="mt-2 flex items-center justify-between text-xs">
           <span className="font-medium text-[#5f5f5f]">{statsLine}</span>
-          {tab === "tenho" ? <SaveBadge status={status} /> : null}
+          {isEditableTab ? <SaveBadge status={status} /> : null}
         </div>
         {errorDetail ? (
           <p className="mt-1 rounded-md border border-[#f3c9c5] bg-[#fdf0ef] px-2 py-1.5 text-[11px] leading-4 text-[#c42b1c]">
             {errorDetail}
           </p>
         ) : null}
-        {tab === "tenho" ? (
+        {(tab === "tenho" || (sparse && tab === "preciso")) ? (
           <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[#e6e6e6]">
             <div
               className="h-full rounded-full transition-all"
@@ -401,7 +464,10 @@ export function Gabarito({
         ) : null}
         {filteredSections.map((section) => {
           const visibleCells = section.cells.filter((c) => cellVisible(c.code));
-          if (visibleCells.length === 0 && (tab === "repetidas" || tab === "preciso")) {
+          if (visibleCells.length === 0 && tab === "repetidas" && !sparse) {
+            return null;
+          }
+          if (visibleCells.length === 0 && tab === "preciso" && !sparse) {
             return null;
           }
           const isOpen = q ? true : openSection === section.id;
@@ -450,15 +516,20 @@ export function Gabarito({
               {isOpen ? (
                 <div className="grid grid-cols-3 gap-2 border-t border-[#eee] p-3 sm:grid-cols-4">
                   {visibleCells.map((cell) => {
-                    const qty = owned[cell.code] ?? 0;
+                    const qty = owned[cell.code] ?? (sparse ? 1 : 0);
                     const marked =
                       tab === "tenho"
                         ? qty > 0
                         : tab === "repetidas"
                           ? qty > 1
                           : qty < 1;
+                    const dimmed =
+                      sparse &&
+                      tab === "preciso" &&
+                      qty >= 1 &&
+                      !marked;
                     const reservedOut =
-                      tab === "tenho" &&
+                      (tab === "tenho" || tab === "repetidas") &&
                       qty > 1 &&
                       reservedGive.current.has(cell.code);
                     const reservedIn =
@@ -486,7 +557,7 @@ export function Gabarito({
                     const activeRing = reservedRing || heatRing;
                     const badgeQty =
                       tab === "repetidas" ? qty - 1 : tab === "tenho" ? qty : 0;
-                    const readOnly = tab !== "tenho";
+                    const readOnly = !isEditableTab;
 
                     return (
                       <button
@@ -501,9 +572,11 @@ export function Gabarito({
                         className={`relative flex aspect-[4/3] select-none items-center justify-center rounded-md border px-0.5 text-center transition touch-manipulation ${
                           marked
                             ? `border-transparent text-white ${activeRing}`
-                            : activeRing
-                              ? `border-[#e0e0e0] bg-[#fafafa] text-[#5f5f5f] ${activeRing}`
-                              : "border-[#e0e0e0] bg-[#fafafa] text-[#5f5f5f]"
+                            : dimmed
+                              ? `border-[#e8e8e8] bg-[#f5f5f5] text-[#b0b0b0] ${activeRing}`
+                              : activeRing
+                                ? `border-[#e0e0e0] bg-[#fafafa] text-[#5f5f5f] ${activeRing}`
+                                : "border-[#e0e0e0] bg-[#fafafa] text-[#5f5f5f]"
                         } ${readOnly ? "cursor-default opacity-95" : ""}`}
                         style={marked ? { background: accent } : undefined}
                       >
@@ -532,6 +605,7 @@ export function Gabarito({
           );
         })}
         {tab === "repetidas" &&
+        !sparse &&
         filteredSections.every(
           (s) => s.cells.filter((c) => (owned[c.code] ?? 0) > 1).length === 0,
         ) ? (
@@ -540,10 +614,22 @@ export function Gabarito({
             aba Tenho.
           </p>
         ) : null}
-        {tab === "preciso" && needCount === TOTAL_STICKERS ? (
+        {tab === "repetidas" && sparse && repetidasTypes === 0 ? (
+          <p className="rounded-lg border border-[#e6e6e6] bg-white p-6 text-center text-sm text-[#5f5f5f]">
+            Nenhuma repetida marcada. Toque nas figurinhas que você tem a mais —
+            ou pule se não tiver repetidas agora.
+          </p>
+        ) : null}
+        {tab === "preciso" && !sparse && needCount === TOTAL_STICKERS ? (
           <p className="rounded-lg border border-[#ecdfc0] bg-[#fbf6ea] p-6 text-center text-sm text-[#5f5f5f]">
             Marque o que você já tem na aba Tenho — o Preciso será calculado
             automaticamente.
+          </p>
+        ) : null}
+        {tab === "preciso" && sparse && needCount === 0 ? (
+          <p className="rounded-lg border border-[#cfe9cf] bg-[#eef7ee] p-6 text-center text-sm text-[#0f7b0f]">
+            Álbum completo! 🎉 Se faltar alguma figurinha, toque nela acima para
+            marcar.
           </p>
         ) : null}
       </div>
@@ -551,7 +637,9 @@ export function Gabarito({
       {sheetCode ? (
         <CellSheet
           code={sheetCode}
-          quantity={owned[sheetCode] ?? 0}
+          quantity={owned[sheetCode] ?? (sparse ? 1 : 0)}
+          sparse={sparse}
+          activeTab={tab}
           onSetQuantity={(q) => setQuantity(sheetCode, q)}
           onClose={() => setSheetCode(null)}
         />
@@ -573,14 +661,26 @@ function SaveBadge({ status }: { status: SaveStatus }) {
 function CellSheet({
   code,
   quantity,
+  sparse,
+  activeTab,
   onSetQuantity,
   onClose,
 }: {
   code: string;
   quantity: number;
+  sparse?: boolean;
+  activeTab?: ViewTab;
   onSetQuantity: (q: number) => void;
   onClose: () => void;
 }) {
+  const minQty = sparse && activeTab === "preciso" ? 0 : 0;
+  const label =
+    sparse && activeTab === "preciso"
+      ? "Você tem esta figurinha?"
+      : sparse && activeTab === "repetidas"
+        ? "Quantas cópias extras (repetidas)?"
+        : "Quantas cópias você tem?";
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/30"
@@ -592,19 +692,19 @@ function CellSheet({
       >
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-[#d0d0d0]" />
         <p className="text-center text-lg font-bold text-[#1b1b1b]">{code}</p>
-        <p className="mt-1 text-center text-sm text-[#5f5f5f]">
-          Quantas cópias você tem?
-        </p>
+        <p className="mt-1 text-center text-sm text-[#5f5f5f]">{label}</p>
         <div className="mt-5 flex items-center justify-center gap-5">
           <button
             type="button"
-            onClick={() => onSetQuantity(quantity - 1)}
+            onClick={() => onSetQuantity(Math.max(minQty, quantity - 1))}
             className="flex h-12 w-12 items-center justify-center rounded-full border border-[#d0d0d0] text-2xl font-bold text-[#1b1b1b] active:bg-[#f0f0f0]"
           >
             −
           </button>
           <span className="min-w-12 text-center text-3xl font-extrabold text-[#0067c0]">
-            {quantity}
+            {sparse && activeTab === "repetidas"
+              ? Math.max(0, quantity - 1)
+              : quantity}
           </span>
           <button
             type="button"
@@ -614,16 +714,31 @@ function CellSheet({
             +
           </button>
         </div>
-        {quantity > 0 ? (
+        {quantity > minQty ? (
           <button
             type="button"
             onClick={() => {
-              onSetQuantity(0);
+              onSetQuantity(minQty);
               onClose();
             }}
             className="mt-5 w-full rounded-md py-2 text-sm font-medium text-[#c42b1c]"
           >
-            Não tenho esta figurinha
+            {sparse && activeTab === "preciso"
+              ? "Não tenho esta figurinha"
+              : sparse && activeTab === "repetidas"
+                ? "Sem repetida desta"
+                : "Não tenho esta figurinha"}
+          </button>
+        ) : null}
+        {sparse && activeTab === "repetidas" && quantity <= 1 ? (
+          <button
+            type="button"
+            onClick={() => {
+              onSetQuantity(2);
+            }}
+            className="mt-3 w-full rounded-md bg-[#0f7b0f] py-2.5 text-sm font-semibold text-white"
+          >
+            Tenho 1 repetida (total 2)
           </button>
         ) : null}
         <button

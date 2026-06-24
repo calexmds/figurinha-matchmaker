@@ -4,7 +4,10 @@ export type Profile = {
   email: string | null;
   avatar_url: string | null;
   active_group_id: string | null;
+  collection_entry_mode?: CollectionEntryMode;
 };
+
+export type CollectionEntryMode = "unset" | "have" | "sparse";
 
 export type Group = {
   id: string;

@@ -1,4 +1,5 @@
 import { buildStickerCatalog } from "@/lib/stickers/catalog";
+import type { CollectionEntryMode } from "@/lib/types";
 
 export type OwnedSticker = { code: string; quantity: number };
 
@@ -19,6 +20,46 @@ export function ownedMapFromList(
     if (item.quantity > 0) map[code] = item.quantity;
   }
   return map;
+}
+
+/**
+ * Modo sparse: assume 1 cópia de cada figurinha, exceto user_needs (falta)
+ * e user_stickers com qty > 1 (repetidas explícitas).
+ */
+export function resolveOwnedMap(
+  mode: CollectionEntryMode,
+  stickerRows: Array<{ code: string; quantity: number }>,
+  explicitNeeds: string[] = [],
+): Record<string, number> {
+  if (mode !== "sparse") {
+    return ownedMapFromList(stickerRows);
+  }
+
+  const map: Record<string, number> = {};
+  for (const code of CATALOG_CODES) {
+    map[code] = 1;
+  }
+
+  for (const code of explicitNeeds) {
+    map[code.toUpperCase()] = 0;
+  }
+
+  for (const row of stickerRows) {
+    const code = row.code.toUpperCase();
+    if (row.quantity > 1) {
+      map[code] = row.quantity;
+    }
+  }
+
+  return map;
+}
+
+export function isSparseMode(mode: CollectionEntryMode): boolean {
+  return mode === "sparse";
+}
+
+export function defaultGabaritoTab(mode: CollectionEntryMode): "tenho" | "preciso" {
+  return mode === "sparse" ? "preciso" : "tenho";
 }
 
 /**

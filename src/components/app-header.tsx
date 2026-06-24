@@ -6,6 +6,7 @@ const titles: Record<string, string> = {
   "/trocas": "Trocas",
   "/grupo": "Grupo",
   "/onboarding": "Figurinhas",
+  "/onboarding/welcome": "Começar",
 };
 
 type AppHeaderProps = {

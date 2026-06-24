@@ -9,8 +9,13 @@ import {
   deriveNeeds,
   deriveTradeDuplicates,
   ownedMapFromList,
+  resolveOwnedMap,
 } from "@/lib/stickers/collection";
-import type { GroupIntelligence } from "@/lib/types";
+import {
+  getCollectionEntryMode,
+  getUserExplicitNeeds,
+} from "@/lib/stickers/collection-mode";
+import type { CollectionEntryMode, GroupIntelligence } from "@/lib/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 function extractCode(
@@ -50,25 +55,32 @@ export async function getUserDuplicates(
 }
 
 export async function getUserNeeds(supabase: SupabaseClient, userId: string) {
-  const owned = await getUserOwned(supabase, userId);
-  return deriveNeeds(ownedMapFromList(owned));
+  const { owned } = await getUserCollection(supabase, userId);
+  return deriveNeeds(owned);
 }
 
 export async function getUserCollection(
   supabase: SupabaseClient,
   userId: string,
 ) {
-  const ownedRows = await getUserOwned(supabase, userId);
-  const ownedMap = ownedMapFromList(ownedRows);
+  const [ownedRows, explicitNeeds, entryMode] = await Promise.all([
+    getUserOwned(supabase, userId),
+    getUserExplicitNeeds(supabase, userId),
+    getCollectionEntryMode(supabase, userId),
+  ]);
+
+  const mode: CollectionEntryMode =
+    entryMode === "sparse" ? "sparse" : "have";
+  const ownedMap = resolveOwnedMap(mode, ownedRows, explicitNeeds);
 
   return {
     owned: ownedMap,
-    ownedList: Object.entries(ownedMap).map(([code, quantity]) => ({
-      code,
-      quantity,
-    })),
+    ownedList: Object.entries(ownedMap)
+      .filter(([, quantity]) => quantity > 0)
+      .map(([code, quantity]) => ({ code, quantity })),
     duplicates: deriveTradeDuplicates(ownedMap),
     needs: deriveNeeds(ownedMap),
+    entryMode,
   };
 }
 

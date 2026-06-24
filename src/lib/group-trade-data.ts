@@ -1,10 +1,10 @@
 import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
-  deriveNeeds,
-  deriveTradeDuplicates,
-  ownedMapFromList,
-} from "@/lib/stickers/collection";
+  getCollectionEntryMode,
+  resolveOwnedForMember,
+} from "@/lib/stickers/collection-mode";
+import type { CollectionEntryMode } from "@/lib/types";
 
 export type GroupTradeData = {
   currentUserId: string;
@@ -62,13 +62,17 @@ function parseNeeds(raw: SnapshotMember["needs"]) {
     .sort();
 }
 
-function tradeListsFromMember(m: SnapshotMember) {
+function tradeListsFromMember(
+  m: SnapshotMember,
+  entryMode: CollectionEntryMode = "have",
+  explicitNeeds: string[] = [],
+) {
   const ownedRows = parseOwned(m.owned);
-  if (ownedRows.length > 0 || m.owned != null) {
-    const ownedMap = ownedMapFromList(ownedRows);
+  if (ownedRows.length > 0 || m.owned != null || entryMode === "sparse") {
+    const resolved = resolveOwnedForMember(entryMode, ownedRows, explicitNeeds);
     return {
-      duplicates: deriveTradeDuplicates(ownedMap),
-      needs: deriveNeeds(ownedMap),
+      duplicates: resolved.duplicates,
+      needs: resolved.needs,
     };
   }
 
@@ -82,9 +86,13 @@ function buildFromMembers(
   members: SnapshotMember[],
   currentUserId: string,
   source: "rpc" | "client",
+  modesByUser: Map<string, CollectionEntryMode> = new Map(),
+  needsByUser: Map<string, string[]> = new Map(),
 ): GroupTradeData {
   const parsed = members.map((m) => {
-    const lists = tradeListsFromMember(m);
+    const mode = modesByUser.get(m.user_id) ?? "have";
+    const needs = needsByUser.get(m.user_id) ?? [];
+    const lists = tradeListsFromMember(m, mode, needs);
     return {
       userId: m.user_id,
       name: m.name ?? "Colecionador",
@@ -119,6 +127,46 @@ function extractCode(
   return Array.isArray(sticker) ? (sticker[0]?.code ?? null) : sticker.code;
 }
 
+async function fetchMemberCollectionMeta(
+  supabase: SupabaseClient,
+  userIds: string[],
+) {
+  const modesByUser = new Map<string, CollectionEntryMode>();
+  const needsByUser = new Map<string, string[]>();
+
+  if (userIds.length === 0) {
+    return { modesByUser, needsByUser };
+  }
+
+  const [{ data: profiles }, { data: needsRows }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, collection_entry_mode")
+      .in("id", userIds),
+    supabase
+      .from("user_needs")
+      .select("user_id, stickers(code)")
+      .in("user_id", userIds),
+  ]);
+
+  for (const row of profiles ?? []) {
+    const mode = row.collection_entry_mode as CollectionEntryMode | undefined;
+    modesByUser.set(row.id, mode === "sparse" ? "sparse" : "have");
+  }
+
+  for (const row of needsRows ?? []) {
+    const code = extractCode(
+      row.stickers as { code: string } | { code: string }[] | null,
+    );
+    if (!code) continue;
+    const list = needsByUser.get(row.user_id) ?? [];
+    list.push(code.toUpperCase());
+    needsByUser.set(row.user_id, list);
+  }
+
+  return { modesByUser, needsByUser };
+}
+
 async function fetchGroupTradeDataViaRpc(
   supabase: SupabaseClient,
   groupId: string,
@@ -140,7 +188,19 @@ async function fetchGroupTradeDataViaRpc(
 
   if (!Array.isArray(members)) return null;
 
-  return buildFromMembers(members, currentUserId, "rpc");
+  const userIds = members.map((m) => m.user_id);
+  const { modesByUser, needsByUser } = await fetchMemberCollectionMeta(
+    supabase,
+    userIds,
+  );
+
+  return buildFromMembers(
+    members,
+    currentUserId,
+    "rpc",
+    modesByUser,
+    needsByUser,
+  );
 }
 
 async function fetchGroupTradeDataViaClient(
@@ -199,7 +259,18 @@ async function fetchGroupTradeDataViaClient(
     };
   });
 
-  return buildFromMembers(members, currentUserId, "client");
+  const { modesByUser, needsByUser } = await fetchMemberCollectionMeta(
+    supabase,
+    userIds,
+  );
+
+  return buildFromMembers(
+    members,
+    currentUserId,
+    "client",
+    modesByUser,
+    needsByUser,
+  );
 }
 
 export async function fetchGroupTradeData(

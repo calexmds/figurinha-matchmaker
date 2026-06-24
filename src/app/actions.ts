@@ -30,7 +30,12 @@ import {
   deriveTradeDuplicates,
   ownedMapFromList,
 } from "@/lib/stickers/collection";
-import { getUserOwned } from "@/lib/data";
+import { getUserOwned, getUserCollection } from "@/lib/data";
+import {
+  materializeHaveStorage,
+  materializeSparseStorage,
+} from "@/lib/stickers/collection-mode";
+import type { CollectionEntryMode } from "@/lib/types";
 import { applyReservationsToLists, getUserReservations } from "@/lib/trades";
 
 export async function signInWithGoogle(returnTo?: string) {
@@ -604,11 +609,11 @@ export async function saveStickerListing(formData: FormData) {
     redirect("/trocas?error=Você não participa deste grupo.");
   }
 
-  const owned = await getUserOwned(supabase, user.id);
+  const { owned: ownedMap } = await getUserCollection(supabase, user.id);
   const reservations = await getUserReservations(supabase, user.id);
   const { availableDuplicates, availableNeeds } = applyReservationsToLists(
-    deriveTradeDuplicates(ownedMapFromList(owned)),
-    deriveNeeds(ownedMapFromList(owned)),
+    deriveTradeDuplicates(ownedMap),
+    deriveNeeds(ownedMap),
     reservations,
   );
 
@@ -672,4 +677,69 @@ export async function removeStickerListing(formData: FormData) {
 
   revalidatePath("/trocas");
   redirect("/trocas?listing_removed=1");
+}
+
+export async function setCollectionEntryMode(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const mode = String(formData.get("mode") ?? "") as CollectionEntryMode;
+  if (mode !== "have" && mode !== "sparse") {
+    redirect("/onboarding/welcome?error=invalid");
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ collection_entry_mode: mode })
+    .eq("id", user.id);
+
+  if (error) {
+    redirect(`/onboarding/welcome?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/onboarding");
+  redirect("/onboarding?mode_set=1");
+}
+
+export async function switchCollectionEntryMode(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const target = String(formData.get("mode") ?? "") as CollectionEntryMode;
+  if (target !== "have" && target !== "sparse") {
+    redirect("/onboarding?error=Modo inválido.");
+  }
+
+  const { owned, entryMode } = await getUserCollection(supabase, user.id);
+  if (entryMode === target) {
+    redirect("/onboarding");
+  }
+
+  if (target === "sparse") {
+    await materializeSparseStorage(supabase, user.id, owned);
+  } else {
+    await materializeHaveStorage(supabase, user.id, owned);
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ collection_entry_mode: target })
+    .eq("id", user.id);
+
+  if (error) {
+    redirect(`/onboarding?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/onboarding");
+  revalidatePath("/home");
+  revalidatePath("/trocas");
+  redirect("/onboarding?mode_set=1");
 }
