@@ -16,12 +16,16 @@ export function PendingTradeCard({ trade }: PendingTradeCardProps) {
   const isWaitingAcceptance =
     trade.status === "proposed" && trade.role === "initiator";
   const isActive = trade.status === "active";
+  const waitingPartnerConfirm = isActive && trade.myConfirmed && !trade.partnerConfirmed;
+  const awaitingMyConfirm = isActive && !trade.myConfirmed;
 
   const statusLabel = isIncomingProposal
     ? "Nova proposta · aguardando sua resposta"
     : isWaitingAcceptance
       ? "Proposta enviada · aguardando aceite"
-      : "Troca aceita · aguardando encontro";
+      : waitingPartnerConfirm
+        ? "Você confirmou · aguardando parceiro"
+        : "Troca aceita · confirme após o encontro";
 
   return (
     <article
@@ -70,12 +74,37 @@ export function PendingTradeCard({ trade }: PendingTradeCardProps) {
         </div>
       </div>
 
+      {isActive ? (
+        <div className="mt-4 flex gap-2 text-xs">
+          <span
+            className={`rounded-full px-2.5 py-1 font-semibold ${
+              trade.myConfirmed
+                ? "bg-[#e8f5e9] text-[#0f7b0f]"
+                : "bg-[#f5f5f5] text-[#5f5f5f]"
+            }`}
+          >
+            Você {trade.myConfirmed ? "✓" : "—"}
+          </span>
+          <span
+            className={`rounded-full px-2.5 py-1 font-semibold ${
+              trade.partnerConfirmed
+                ? "bg-[#e8f5e9] text-[#0f7b0f]"
+                : "bg-[#f5f5f5] text-[#5f5f5f]"
+            }`}
+          >
+            {trade.partnerName} {trade.partnerConfirmed ? "✓" : "—"}
+          </span>
+        </div>
+      ) : null}
+
       <p className="mt-4 text-xs leading-5 text-[#5f5f5f]">
         {isIncomingProposal
           ? "Aceite para reservar as figurinhas nos dois lados. Recuse se não quiser esta combinação."
           : isWaitingAcceptance
             ? "Quando o parceiro aceitar, as figurinhas ficam reservadas até a troca física."
-            : "As figurinhas ficam reservadas no gabarito. Qualquer um dos dois pode confirmar após o encontro."}
+            : waitingPartnerConfirm
+              ? "Sua confirmação foi registrada. Quando o parceiro confirmar também, as coleções serão atualizadas."
+              : "Após o encontro, cada um confirma do seu lado. Só quando os dois confirmarem as coleções são atualizadas."}
       </p>
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
@@ -112,15 +141,21 @@ export function PendingTradeCard({ trade }: PendingTradeCardProps) {
           </form>
         ) : isActive ? (
           <>
-            <form action={completeTrade} className="flex-1">
-              <input type="hidden" name="tradeId" value={trade.id} />
-              <button
-                type="submit"
-                className="min-h-11 w-full rounded-md bg-[#0f7b0f] px-4 py-3 text-sm font-semibold text-white active:bg-[#0c640c]"
-              >
-                Troca feita ✓
-              </button>
-            </form>
+            {awaitingMyConfirm ? (
+              <form action={completeTrade} className="flex-1">
+                <input type="hidden" name="tradeId" value={trade.id} />
+                <button
+                  type="submit"
+                  className="min-h-11 w-full rounded-md bg-[#0f7b0f] px-4 py-3 text-sm font-semibold text-white active:bg-[#0c640c]"
+                >
+                  Confirmar troca ✓
+                </button>
+              </form>
+            ) : (
+              <p className="flex min-h-11 flex-1 items-center rounded-md border border-[#d4a017] bg-[#fffbf0] px-4 py-3 text-sm font-semibold text-[#9a6700]">
+                Aguardando {trade.partnerName}
+              </p>
+            )}
             <form action={cancelTrade} className="flex-1">
               <input type="hidden" name="tradeId" value={trade.id} />
               <button

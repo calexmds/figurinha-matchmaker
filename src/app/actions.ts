@@ -559,7 +559,7 @@ export async function completeTrade(formData: FormData) {
     redirect(`/trocas?error=${encodeURIComponent(result.error)}`);
   }
 
-  redirect("/trocas?completed=1");
+  redirect(result.completed ? "/trocas?completed=1" : "/trocas?confirmed=1");
 }
 
 export async function cancelTrade(formData: FormData) {

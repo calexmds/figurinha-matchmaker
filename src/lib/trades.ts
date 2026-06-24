@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
+import { getUserCollection } from "@/lib/data";
 import {
-  ownedMapFromList,
   tradeableQuantity,
   userNeedsCode,
 } from "@/lib/stickers/collection";
@@ -25,6 +25,8 @@ export type PendingTrade = {
   status: "proposed" | "active";
   role: TradeRole;
   createdAt: string;
+  myConfirmed: boolean;
+  partnerConfirmed: boolean;
 };
 
 export type TradeReservations = {
@@ -48,23 +50,8 @@ function revalidateTradePaths() {
 }
 
 async function fetchOwnedMap(supabase: SupabaseClient, userId: string) {
-  const { data: ownedRows } = await supabase
-    .from("user_stickers")
-    .select("quantity, stickers(code)")
-    .eq("user_id", userId)
-    .gt("quantity", 0);
-
-  return ownedMapFromList(
-    (ownedRows ?? [])
-      .map((row) => ({
-        code:
-          extractCode(
-            row.stickers as { code: string } | { code: string }[] | null,
-          ) ?? "",
-        quantity: row.quantity,
-      }))
-      .filter((r) => r.code),
-  );
+  const { owned } = await getUserCollection(supabase, userId);
+  return owned;
 }
 
 async function validateUserTradeInventory(
@@ -140,6 +127,8 @@ function mapTradeRow(
     group_id: string;
     status: string;
     created_at: string;
+    initiator_confirmed_at?: string | null;
+    partner_confirmed_at?: string | null;
     groups?: { name: string } | { name: string }[] | null;
   },
   items: { give: string[]; receive: string[] },
@@ -155,6 +144,9 @@ function mapTradeRow(
     ? (g[0]?.name ?? "Grupo")
     : (g?.name ?? "Grupo");
 
+  const initiatorConfirmed = !!trade.initiator_confirmed_at;
+  const partnerConfirmed = !!trade.partner_confirmed_at;
+
   return {
     id: trade.id,
     groupId: trade.group_id,
@@ -166,12 +158,15 @@ function mapTradeRow(
     status: trade.status as "proposed" | "active",
     role: isInitiator ? "initiator" : "partner",
     createdAt: trade.created_at,
+    myConfirmed: isInitiator ? initiatorConfirmed : partnerConfirmed,
+    partnerConfirmed: isInitiator ? partnerConfirmed : initiatorConfirmed,
   };
 }
 
 export async function getUserReservations(
   supabase: SupabaseClient,
   userId: string,
+  exceptTradeId?: string,
 ): Promise<TradeReservations> {
   const { data: trades } = await supabase
     .from("trades")
@@ -182,16 +177,17 @@ export async function getUserReservations(
   const give = new Map<string, number>();
   const receive = new Set<string>();
 
-  if (!trades?.length) return { give, receive };
+  const openTrades = (trades ?? []).filter((t) => t.id !== exceptTradeId);
+  if (!openTrades.length) return { give, receive };
 
-  const tradeIds = trades.map((t) => t.id);
+  const tradeIds = openTrades.map((t) => t.id);
   const { data: items } = await supabase
     .from("trade_items")
     .select("trade_id, side, quantity, stickers(code)")
     .in("trade_id", tradeIds);
 
   const roleByTrade = new Map(
-    trades.map((t) => [
+    openTrades.map((t) => [
       t.id,
       {
         isInitiator: t.user_id === userId,
@@ -253,7 +249,7 @@ export async function getAllPendingTrades(
   const { data: trades } = await supabase
     .from("trades")
     .select(
-      "id, user_id, partner_id, group_id, status, created_at, groups(name)",
+      "id, user_id, partner_id, group_id, status, created_at, initiator_confirmed_at, partner_confirmed_at, groups(name)",
     )
     .in("status", [...OPEN_STATUSES])
     .or(`user_id.eq.${userId},partner_id.eq.${userId}`)
@@ -609,10 +605,16 @@ export async function completePendingTrade(
   supabase: SupabaseClient,
   userId: string,
   tradeId: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<
+  | { ok: true; completed: true }
+  | { ok: true; completed: false }
+  | { ok: false; error: string }
+> {
   const { data: trade } = await supabase
     .from("trades")
-    .select("id, status, user_id, partner_id")
+    .select(
+      "id, status, user_id, partner_id, initiator_confirmed_at, partner_confirmed_at",
+    )
     .eq("id", tradeId)
     .or(`user_id.eq.${userId},partner_id.eq.${userId}`)
     .maybeSingle();
@@ -623,6 +625,37 @@ export async function completePendingTrade(
       ok: false,
       error: "Só dá para confirmar trocas aceitas pelos dois lados.",
     };
+  }
+
+  const isInitiator = trade.user_id === userId;
+  let initiatorConfirmed = !!trade.initiator_confirmed_at;
+  let partnerConfirmed = !!trade.partner_confirmed_at;
+
+  if (isInitiator && !initiatorConfirmed) {
+    const { error } = await supabase
+      .from("trades")
+      .update({ initiator_confirmed_at: new Date().toISOString() })
+      .eq("id", tradeId)
+      .is("initiator_confirmed_at", null);
+    if (error) {
+      return { ok: false, error: "Não foi possível registrar sua confirmação." };
+    }
+    initiatorConfirmed = true;
+  } else if (!isInitiator && !partnerConfirmed) {
+    const { error } = await supabase
+      .from("trades")
+      .update({ partner_confirmed_at: new Date().toISOString() })
+      .eq("id", tradeId)
+      .is("partner_confirmed_at", null);
+    if (error) {
+      return { ok: false, error: "Não foi possível registrar sua confirmação." };
+    }
+    partnerConfirmed = true;
+  }
+
+  if (!initiatorConfirmed || !partnerConfirmed) {
+    revalidateTradePaths();
+    return { ok: true, completed: false };
   }
 
   const { data: items } = await supabase
@@ -639,6 +672,44 @@ export async function completePendingTrade(
     if (!code) continue;
     if (item.side === "give") initiatorGive.push(code);
     else initiatorReceive.push(code);
+  }
+
+  const initiatorReservations = await getUserReservations(
+    supabase,
+    trade.user_id,
+    tradeId,
+  );
+  const initiatorCheck = await validateUserTradeInventory(
+    supabase,
+    trade.user_id,
+    initiatorGive,
+    initiatorReceive,
+    initiatorReservations,
+  );
+  if (!initiatorCheck.ok) {
+    return {
+      ok: false,
+      error: `Inventário desatualizado: ${initiatorCheck.error.toLowerCase()}`,
+    };
+  }
+
+  const partnerReservations = await getUserReservations(
+    supabase,
+    trade.partner_id,
+    tradeId,
+  );
+  const partnerCheck = await validateUserTradeInventory(
+    supabase,
+    trade.partner_id,
+    initiatorReceive,
+    initiatorGive,
+    partnerReservations,
+  );
+  if (!partnerCheck.ok) {
+    return {
+      ok: false,
+      error: `Parceiro não pode concluir agora (${partnerCheck.error.toLowerCase()}).`,
+    };
   }
 
   await applyCollectionChanges(
@@ -660,12 +731,13 @@ export async function completePendingTrade(
       status: "completed",
       completed_at: new Date().toISOString(),
     })
-    .eq("id", tradeId);
+    .eq("id", tradeId)
+    .eq("status", "active");
 
   if (error) return { ok: false, error: "Não foi possível concluir a troca." };
 
   revalidateTradePaths();
-  return { ok: true };
+  return { ok: true, completed: true };
 }
 
 export async function cancelPendingTrade(

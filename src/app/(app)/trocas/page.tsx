@@ -31,6 +31,7 @@ export default async function TradesPage({
     accepted?: string;
     rejected?: string;
     completed?: string;
+    confirmed?: string;
     cancelled?: string;
     listing_saved?: string;
     listing_removed?: string;
@@ -113,6 +114,9 @@ export default async function TradesPage({
     (query.rejected ? "Proposta recusada." : null) ??
     (query.completed
       ? "Troca concluída! Coleções dos dois atualizadas."
+      : null) ??
+    (query.confirmed
+      ? "Confirmação registrada. Aguardando o parceiro confirmar também."
       : null) ??
     (query.cancelled ? "Troca cancelada." : null) ??
     (query.listing_saved ? "Anúncio publicado!" : null) ??
