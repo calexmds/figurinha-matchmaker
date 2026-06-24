@@ -10,6 +10,7 @@ import {
   membersFromTradeData,
 } from "@/lib/group-intelligence";
 import { getUserTradeSummary } from "@/lib/data";
+import { buildGroupProgress } from "@/lib/group-progress";
 import {
   countNeedsAvailableFromTradeData,
   getCachedGroupTradeData,
@@ -32,7 +33,8 @@ export default async function HomePage() {
         membersFromTradeData(tradeData),
         user.id,
       );
-      return { group: g, tradeData, intelligence };
+      const progress = buildGroupProgress(g.members, tradeData, user.id);
+      return { group: g, tradeData, intelligence, progress };
     }),
   );
 
@@ -76,6 +78,11 @@ export default async function HomePage() {
         ? groups[0].name
         : `${groups.length} grupos`;
 
+  const groupsNeedingNudge = validSnapshots.filter(
+    (s) =>
+      s.progress.memberCount < 2 || s.progress.pendingMembers.length > 0,
+  );
+
   return (
     <div className="space-y-6">
       <InstallPrompt />
@@ -108,6 +115,28 @@ export default async function HomePage() {
           </p>
         )}
       </div>
+
+      {groupsNeedingNudge.length > 0 ? (
+        <div className="rounded-lg border border-[#ecdfc0] bg-[#fffbf0] p-5">
+          <p className="text-sm font-semibold text-[#9a6700]">
+            {groupsNeedingNudge.length === 1
+              ? groupsNeedingNudge[0].progress.memberCount < 2
+                ? `${groupsNeedingNudge[0].group.name}: convide mais alguém`
+                : `${groupsNeedingNudge[0].group.name}: ${groupsNeedingNudge[0].progress.registeredCount} de ${groupsNeedingNudge[0].progress.memberCount} cadastraram`
+              : "Alguns grupos ainda precisam de cadastro ou convites"}
+          </p>
+          <p className="mt-2 text-sm leading-6 text-[#5f5f5f]">
+            Abra Grupo para lembrar quem falta marcar figurinhas ou convidar de
+            novo pelo WhatsApp.
+          </p>
+          <Link
+            href="/grupo"
+            className="mt-4 inline-flex min-h-11 items-center rounded-md bg-[#0067c0] px-4 py-3 text-sm font-semibold text-white active:bg-[#005aa8]"
+          >
+            Ver progresso do grupo
+          </Link>
+        </div>
+      ) : null}
 
       {heroSnapshot ? (
         <GroupIntelligenceHero

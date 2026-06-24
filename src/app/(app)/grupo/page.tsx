@@ -3,6 +3,8 @@ import { createGroup, joinGroupWithCode, signOut } from "@/app/actions";
 import { requireUser } from "@/lib/auth";
 import { GroupCard } from "@/components/group-card";
 import { getUserGroupsWithMembers } from "@/lib/groups";
+import { buildGroupProgress } from "@/lib/group-progress";
+import { getCachedGroupTradeData } from "@/lib/group-trade-data";
 
 export default async function GroupPage({
   searchParams,
@@ -12,6 +14,20 @@ export default async function GroupPage({
   const query = await searchParams;
   const { supabase, user } = await requireUser();
   const groups = await getUserGroupsWithMembers(supabase, user.id);
+
+  const groupsWithProgress = await Promise.all(
+    groups.map(async (group) => {
+      const tradeData = await getCachedGroupTradeData(
+        supabase,
+        group.id,
+        user.id,
+      );
+      return {
+        group,
+        progress: buildGroupProgress(group.members, tradeData, user.id),
+      };
+    }),
+  );
 
   async function createGroupAction(formData: FormData) {
     "use server";
@@ -81,10 +97,11 @@ export default async function GroupPage({
             Toque no grupo para ver participantes e convite. Grupos novos já
             entram nas sugestões de troca automaticamente.
           </p>
-          {groups.map((group) => (
+          {groupsWithProgress.map(({ group, progress }) => (
             <GroupCard
               key={group.id}
               group={group}
+              progress={progress}
               currentUserId={user.id}
             />
           ))}

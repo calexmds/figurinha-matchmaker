@@ -10,17 +10,23 @@ export type GroupTradeData = {
   currentUserId: string;
   currentDuplicates: Array<{ code: string; quantity: number }>;
   currentNeeds: string[];
+  currentOwnedCount: number;
+  currentHasRegistered: boolean;
   members: Array<{
     userId: string;
     name: string;
     avatarUrl: string | null;
     duplicates: Array<{ code: string; quantity: number }>;
     needs: string[];
+    ownedCount: number;
+    hasRegistered: boolean;
   }>;
   meta: {
     memberCount: number;
     membersWithDuplicates: number;
     membersWithNeeds: number;
+    registeredMemberCount: number;
+    collectiveUniqueOwned: number;
     source: "rpc" | "client";
   };
 };
@@ -82,6 +88,18 @@ function tradeListsFromMember(
   };
 }
 
+function countOwnedStickers(ownedRows: Array<{ code: string; quantity: number }>) {
+  return ownedRows.filter((row) => row.quantity > 0).length;
+}
+
+function memberHasRegistered(
+  ownedCount: number,
+  duplicates: Array<{ code: string; quantity: number }>,
+  needs: string[],
+) {
+  return ownedCount > 0 || duplicates.length > 0 || needs.length > 0;
+}
+
 function buildFromMembers(
   members: SnapshotMember[],
   currentUserId: string,
@@ -89,16 +107,30 @@ function buildFromMembers(
   modesByUser: Map<string, CollectionEntryMode> = new Map(),
   needsByUser: Map<string, string[]> = new Map(),
 ): GroupTradeData {
+  const collectiveOwned = new Set<string>();
+
   const parsed = members.map((m) => {
     const mode = modesByUser.get(m.user_id) ?? "have";
     const needs = needsByUser.get(m.user_id) ?? [];
+    const ownedRows = parseOwned(m.owned);
+    for (const row of ownedRows) {
+      if (row.quantity > 0) collectiveOwned.add(row.code);
+    }
     const lists = tradeListsFromMember(m, mode, needs);
+    const ownedCount = countOwnedStickers(ownedRows);
+    const hasRegistered = memberHasRegistered(
+      ownedCount,
+      lists.duplicates,
+      lists.needs,
+    );
     return {
       userId: m.user_id,
       name: m.name ?? "Colecionador",
       avatarUrl: m.avatar_url ?? null,
       duplicates: lists.duplicates,
       needs: lists.needs,
+      ownedCount,
+      hasRegistered,
     };
   });
 
@@ -109,12 +141,16 @@ function buildFromMembers(
     currentUserId,
     currentDuplicates: current?.duplicates ?? [],
     currentNeeds: current?.needs ?? [],
+    currentOwnedCount: current?.ownedCount ?? 0,
+    currentHasRegistered: current?.hasRegistered ?? false,
     members: others,
     meta: {
       memberCount: parsed.length,
       membersWithDuplicates: parsed.filter((m) => m.duplicates.length > 0)
         .length,
       membersWithNeeds: parsed.filter((m) => m.needs.length > 0).length,
+      registeredMemberCount: parsed.filter((m) => m.hasRegistered).length,
+      collectiveUniqueOwned: collectiveOwned.size,
       source,
     },
   };
@@ -305,27 +341,38 @@ export function countNeedsAvailableFromTradeData(
 export function summarizeTradeDiagnostics(
   tradeData: GroupTradeData,
   matchesCount: number,
+  groupName = "Grupo",
 ) {
   const { meta, members, currentDuplicates, currentNeeds } = tradeData;
-  const partnersWithLists = members.filter(
-    (m) => m.duplicates.length > 0 || m.needs.length > 0,
-  ).length;
+  const pendingNames = [
+    ...(tradeData.currentHasRegistered
+      ? []
+      : [{ name: "você", isSelf: true }]),
+    ...members
+      .filter((m) => !m.hasRegistered)
+      .map((m) => ({ name: m.name, isSelf: false })),
+  ];
 
   if (matchesCount > 0) return null;
 
   if (meta.memberCount < 2) {
     return {
-      title: "Só você neste grupo ainda",
+      title: `${groupName}: só você por enquanto`,
       detail:
-        "Convide seu irmão pelo link do WhatsApp em Grupo. O match só funciona com 2 ou mais pessoas no mesmo grupo.",
+        "Convide família ou amigos pelo link do WhatsApp em Grupo. O match precisa de 2 ou mais pessoas.",
     };
   }
 
-  if (partnersWithLists === 0) {
+  if (meta.registeredMemberCount < meta.memberCount) {
+    const pendingLabel =
+      pendingNames.length === 1
+        ? pendingNames[0].isSelf
+          ? "Você ainda não cadastrou"
+          : `${pendingNames[0].name} ainda não cadastrou`
+        : `${pendingNames.length} pessoas ainda não cadastraram`;
     return {
-      title: "Seu irmão ainda não cadastrou listas",
-      detail:
-        "Ele precisa marcar o que tem em Figurinhas (aba Tenho). Peça para abrir o app e salvar.",
+      title: `${groupName}: ${meta.registeredMemberCount} de ${meta.memberCount} já cadastraram`,
+      detail: `${pendingLabel} figurinhas em Figurinhas (aba Tenho ou Preciso/Repetidas). Use "Lembrar no WhatsApp" em Grupo para avisar.`,
     };
   }
 
@@ -347,15 +394,34 @@ export function summarizeTradeDiagnostics(
 
   if (yourNeedsTheyHave.length === 0 && yourDupsTheyNeed.length === 0) {
     return {
-      title: "Listas visíveis, mas sem cruzamento",
+      title: `${groupName}: listas ok, sem cruzamento`,
       detail:
-        "Vocês estão no mesmo grupo com listas salvas, porém nenhuma figurinha que você precisa bate com repetida dele (e vice-versa). Confiram se marcaram os mesmos códigos (ex.: BRA01, não só o número).",
+        "Todos cadastraram, mas nenhuma figurinha que você precisa bate com repetida de alguém (e vice-versa). Confiram se usaram os mesmos códigos (ex.: BRA01).",
     };
   }
 
   return {
-    title: "Cruzamento detectado, mas match não montou",
+    title: `${groupName}: cruzamento detectado, match não montou`,
     detail:
-      "Há figurinhas compatíveis — recarregue a página. Se persistir, rode a migration 004_group_trade_snapshot.sql no Supabase.",
+      "Há figurinhas compatíveis — recarregue a página. Se persistir, confira se a migration 004_group_trade_snapshot.sql foi aplicada no Supabase.",
   };
+}
+
+export function summarizeAllGroupDiagnostics(
+  groups: Array<{ id: string; name: string }>,
+  matchesByGroup: Map<string, number>,
+  tradeDataByGroup: Map<string, GroupTradeData | null>,
+) {
+  const items: Array<{ groupName: string; title: string; detail: string }> = [];
+
+  for (const group of groups) {
+    const matchCount = matchesByGroup.get(group.id) ?? 0;
+    if (matchCount > 0) continue;
+    const tradeData = tradeDataByGroup.get(group.id);
+    if (!tradeData) continue;
+    const diag = summarizeTradeDiagnostics(tradeData, matchCount, group.name);
+    if (diag) items.push({ groupName: group.name, ...diag });
+  }
+
+  return items;
 }

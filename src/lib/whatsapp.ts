@@ -14,6 +14,27 @@ Entra aqui para cruzar repetidas e ver sugestões de troca (só nosso grupo):
 Se o botão não abrir no WhatsApp, toque nos ⋮ e escolha "Abrir no Chrome".`;
 }
 
+export function buildNudgeMessage(
+  groupName: string,
+  inviteCode: string,
+  recipientName?: string,
+) {
+  const greeting = recipientName ? `Oi ${recipientName}!` : "Oi!";
+  return `${greeting} 🏆
+
+Falta só você no grupo "${groupName}" do Figurinha Matchmaker!
+
+Marque suas figurinhas (leva ~2 min) para cruzarmos repetidas e achar trocas:
+
+👉 ${APP_URL}/join/${inviteCode}
+
+1) Toque no link
+2) Entre com Google ou e-mail
+3) Marque repetidas e o que falta no gabarito
+
+Se o botão não abrir no WhatsApp, toque nos ⋮ e escolha "Abrir no Chrome".`;
+}
+
 export function buildTradeMessage(
   partnerName: string,
   receive: string[],

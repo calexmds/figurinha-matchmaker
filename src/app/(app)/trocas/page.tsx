@@ -9,7 +9,7 @@ import { computeAllGroupMatches } from "@/lib/multi-group-trades";
 import { getUserGroupsWithMembers } from "@/lib/groups";
 import {
   getCachedGroupTradeData,
-  summarizeTradeDiagnostics,
+  summarizeAllGroupDiagnostics,
 } from "@/lib/group-trade-data";
 import { getMarketPageData } from "@/lib/market-listings";
 import {
@@ -126,16 +126,36 @@ export default async function TradesPage({
 
   const groupNames = groups.map((g) => g.name).join(", ");
 
-  let diagnostics: { title: string; detail: string } | null = null;
+  let diagnosticsList: Array<{
+    groupName: string;
+    title: string;
+    detail: string;
+  }> = [];
   if (matches.length === 0 && groups.length > 0) {
-    const tradeData = await getCachedGroupTradeData(
-      supabase,
-      groups[0].id,
-      user.id,
+    const tradeDataByGroup = new Map(
+      await Promise.all(
+        groups.map(async (g) => {
+          const tradeData = await getCachedGroupTradeData(
+            supabase,
+            g.id,
+            user.id,
+          );
+          return [g.id, tradeData] as const;
+        }),
+      ),
     );
-    if (tradeData) {
-      diagnostics = summarizeTradeDiagnostics(tradeData, matches.length);
+    const matchesByGroup = new Map<string, number>();
+    for (const match of matches) {
+      matchesByGroup.set(
+        match.groupId,
+        (matchesByGroup.get(match.groupId) ?? 0) + 1,
+      );
     }
+    diagnosticsList = summarizeAllGroupDiagnostics(
+      groups.map((g) => ({ id: g.id, name: g.name })),
+      matchesByGroup,
+      tradeDataByGroup,
+    );
   }
 
   return (
@@ -187,12 +207,14 @@ export default async function TradesPage({
         <h3 className="text-base font-bold text-[#1b1b1b]">Sugestões de troca</h3>
 
         {matches.length === 0 ? (
-          <div className="fluent-card space-y-3 p-6 text-sm text-[#5f5f5f]">
-            {diagnostics ? (
-              <>
-                <p className="font-semibold text-[#1b1b1b]">{diagnostics.title}</p>
-                <p className="leading-6">{diagnostics.detail}</p>
-              </>
+          <div className="fluent-card space-y-4 p-6 text-sm text-[#5f5f5f]">
+            {diagnosticsList.length > 0 ? (
+              diagnosticsList.map((diag) => (
+                <div key={diag.groupName} className="space-y-2">
+                  <p className="font-semibold text-[#1b1b1b]">{diag.title}</p>
+                  <p className="leading-6">{diag.detail}</p>
+                </div>
+              ))
             ) : (
               <>
                 <p className="font-semibold text-[#1b1b1b]">
