@@ -7,7 +7,7 @@ App de troca de figurinhas da Copa do Mundo 2026 com match automático dentro de
 ## Stack
 
 - Next.js 16 + TypeScript + Tailwind
-- Supabase (Auth Google + e-mail magic link + PostgreSQL + RLS)
+- Supabase (Auth Google + PostgreSQL + RLS)
 - Vercel (deploy)
 
 ## Setup rápido
@@ -32,7 +32,7 @@ App de troca de figurinhas da Copa do Mundo 2026 com match automático dentro de
 | `009_collection_entry_mode.sql` | Modo have / sparse no perfil |
 | `010_trade_dual_confirm.sql` | Confirmação dupla na conclusão |
 
-3. Em **Authentication → Providers**, ative **Google** e **Email** (magic link)
+3. Em **Authentication → Providers**, ative **Google** e desligue **Email** (login só via Google)
 4. Em **Authentication → URL Configuration**, adicione:
    - Site URL: `https://www.figurinhamatchmaker.com.br`
    - Redirect URLs:
@@ -74,7 +74,7 @@ npm run db:seed      # regenerar supabase/seed.sql (980 figurinhas)
 
 ## Fluxo do usuário
 
-1. Landing → Entrar com Google ou e-mail
+1. Landing → Entrar com Google
 2. Criar grupo ou abrir link `/join/CODIGO` (entra no grupo automaticamente após login)
 3. Escolher modo de cadastro (Tenho ou álbum quase completo) e marcar figurinhas no gabarito
 4. Ver sugestões de troca, propor/aceitar/confirmar trocas bilaterais

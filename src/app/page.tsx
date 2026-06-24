@@ -39,18 +39,12 @@ export default async function LandingPage() {
           <li>✓ Convite e proposta de troca no WhatsApp</li>
         </ul>
 
-        <div className="mt-8 flex flex-col gap-3">
+        <div className="mt-8">
           <Link
             href="/api/auth/google?next=/home"
-            className="inline-flex min-h-12 items-center justify-center rounded-md bg-white px-5 py-3 text-sm font-semibold text-[#0067c0] transition active:bg-[#eaeaea]"
+            className="inline-flex min-h-12 w-full items-center justify-center rounded-md bg-white px-5 py-3 text-sm font-semibold text-[#0067c0] transition active:bg-[#eaeaea]"
           >
             Entrar com Google
-          </Link>
-          <Link
-            href="/login?next=/home"
-            className="inline-flex min-h-12 items-center justify-center rounded-md border border-white/30 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition active:bg-white/20"
-          >
-            Entrar com e-mail
           </Link>
         </div>
       </section>

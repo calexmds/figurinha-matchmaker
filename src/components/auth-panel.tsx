@@ -23,44 +23,13 @@ export function AuthPanel({ nextPath, groupName, compact }: AuthPanelProps) {
         className="flex min-h-12 w-full items-center justify-center gap-3 rounded-md border border-[#0067c0] bg-[#0067c0] px-4 py-3 text-sm font-semibold text-white transition active:bg-[#005aa8]"
       >
         <GoogleIcon />
-        Entrar com Google (recomendado)
+        Entrar com Google
       </a>
 
-      <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-[#e6e6e6]" />
-        <span className="text-xs text-[#8a8a8a]">ou</span>
-        <div className="h-px flex-1 bg-[#e6e6e6]" />
-      </div>
-
-      <form
-        action="/api/auth/email"
-        method="POST"
-        className="space-y-3"
-      >
-        <input type="hidden" name="next" value={nextPath} />
-        <label className="block">
-          <span className="text-xs font-medium text-[#5f5f5f]">
-            E-mail (sem precisar de Google)
-          </span>
-          <input
-            type="email"
-            name="email"
-            required
-            autoComplete="email"
-            placeholder="seu@email.com"
-            className="mt-1 w-full rounded-md border border-[#d0d0d0] bg-white px-4 py-3 text-sm text-[#1b1b1b] placeholder:text-[#9a9a9a] focus:border-[#0067c0] focus:outline-none"
-          />
-        </label>
-        <button
-          type="submit"
-          className="min-h-12 w-full rounded-md bg-[#0067c0] px-4 py-3 text-sm font-semibold text-white active:bg-[#005aa8]"
-        >
-          Receber link de acesso
-        </button>
-        <p className="text-center text-[11px] leading-4 text-[#8a8a8a]">
-          Na primeira vez sua conta é criada automaticamente. Sem senha.
-        </p>
-      </form>
+      <p className="text-center text-[11px] leading-4 text-[#8a8a8a]">
+        Use a conta Google que você já tem no celular. Na primeira vez sua conta
+        é criada automaticamente.
+      </p>
 
       {!compact ? (
         <p className="text-center text-xs text-[#8a8a8a]">

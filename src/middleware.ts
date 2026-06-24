@@ -10,7 +10,7 @@ import { normalizeInviteCode } from "@/lib/invite";
 export async function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
-  // OAuth / magic link: encaminha ?code para /auth/callback
+  // OAuth: encaminha ?code para /auth/callback
   if (searchParams.has("code") && pathname !== "/auth/callback") {
     const callbackUrl = request.nextUrl.clone();
     callbackUrl.pathname = "/auth/callback";

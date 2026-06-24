@@ -8,7 +8,7 @@ Entra aqui para cruzar repetidas e ver sugestões de troca (só nosso grupo):
 👉 ${APP_URL}/join/${inviteCode}
 
 1) Toque no link acima
-2) Entre com Google ou e-mail (link mágico, sem senha)
+2) Entre com Google
 3) Marque repetidas e o que falta no gabarito — leva ~2 min
 
 Se o botão não abrir no WhatsApp, toque nos ⋮ e escolha "Abrir no Chrome".`;
@@ -29,7 +29,7 @@ Marque suas figurinhas (leva ~2 min) para cruzarmos repetidas e achar trocas:
 👉 ${APP_URL}/join/${inviteCode}
 
 1) Toque no link
-2) Entre com Google ou e-mail
+2) Entre com Google
 3) Marque repetidas e o que falta no gabarito
 
 Se o botão não abrir no WhatsApp, toque nos ⋮ e escolha "Abrir no Chrome".`;

@@ -11,9 +11,6 @@ export default async function LoginPage({
   searchParams: Promise<{
     next?: string;
     error?: string;
-    reason?: string;
-    sent?: string;
-    email?: string;
   }>;
 }) {
   const params = await searchParams;
@@ -44,42 +41,9 @@ export default async function LoginPage({
           </div>
         </div>
 
-        {params.sent === "1" && params.email ? (
-          <div className="mb-6 rounded-md border border-[#cfe9cf] bg-[#eef7ee] px-4 py-3 text-sm text-[#0f7b0f]">
-            <p className="font-semibold">Link enviado!</p>
-            <p className="mt-1 text-xs leading-5 text-[#1b1b1b]">
-              Abra o e-mail <strong>{params.email}</strong> e toque no link para
-              entrar. Verifique também o spam.
-            </p>
-          </div>
-        ) : null}
-
         {params.error ? (
           <p className="mb-4 rounded-md border border-[#f3c9c5] bg-[#fdf0ef] px-4 py-3 text-sm text-[#c42b1c]">
-            {params.error === "email" &&
-            params.reason?.toLowerCase().includes("rate limit") ? (
-              <>
-                <span className="font-semibold">
-                  Muitas tentativas de e-mail em pouco tempo.
-                </span>
-                <span className="mt-2 block text-xs leading-5 text-[#5f5f5f]">
-                  Use <strong>Entrar com Google</strong> abaixo — é instantâneo e
-                  não depende de e-mail. Ou aguarde cerca de 1 hora e tente de
-                  novo.
-                </span>
-              </>
-            ) : params.error === "email" ? (
-              <>
-                Não foi possível enviar o link por e-mail.
-                {params.reason ? (
-                  <span className="mt-1 block text-xs opacity-80">
-                    {params.reason}
-                  </span>
-                ) : null}
-              </>
-            ) : (
-              "Não foi possível entrar. Tente novamente."
-            )}
+            Não foi possível entrar. Tente novamente com Google.
           </p>
         ) : null}
 
