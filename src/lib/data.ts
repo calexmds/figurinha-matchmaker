@@ -8,7 +8,6 @@ import {
 import {
   deriveNeeds,
   deriveTradeDuplicates,
-  ownedMapFromLegacy,
   ownedMapFromList,
 } from "@/lib/stickers/collection";
 import type { GroupIntelligence } from "@/lib/types";
@@ -59,21 +58,8 @@ export async function getUserCollection(
   supabase: SupabaseClient,
   userId: string,
 ) {
-  const [ownedRows, legacyNeedsRows] = await Promise.all([
-    getUserOwned(supabase, userId),
-    supabase.from("user_needs").select("stickers(code)").eq("user_id", userId),
-  ]);
-
-  const legacyNeeds = (legacyNeedsRows.data ?? [])
-    .map((row) =>
-      extractCode(row.stickers as { code: string } | { code: string }[] | null),
-    )
-    .filter((code): code is string => !!code);
-
-  const ownedMap =
-    legacyNeeds.length > 0
-      ? ownedMapFromLegacy(ownedRows, legacyNeeds)
-      : ownedMapFromList(ownedRows);
+  const ownedRows = await getUserOwned(supabase, userId);
+  const ownedMap = ownedMapFromList(ownedRows);
 
   return {
     owned: ownedMap,

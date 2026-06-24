@@ -175,21 +175,22 @@ export function Gabarito({
   const tapCell = useCallback(
     (code: string) => {
       if (tab !== "tenho") return;
-      const nextQty = (owned[code] ?? 0) + 1;
-      const block = reservationBlock(code, nextQty);
-      if (block) {
-        setErrorDetail(block);
-        setStatus("error");
-        return;
-      }
       setOwned((prev) => {
-        const next = { ...prev, [code]: nextQty };
+        const nextQty = (prev[code] ?? 0) + 1;
+        const block = reservationBlock(code, nextQty);
+        if (block) {
+          setErrorDetail(block);
+          setStatus("error");
+          return prev;
+        }
         queueEdit(code, nextQty);
-        return next;
+        return { ...prev, [code]: nextQty };
       });
     },
-    [tab, queueEdit, owned, reservationBlock],
+    [tab, queueEdit, reservationBlock],
   );
+
+  const lastTapRef = useRef<{ code: string; at: number } | null>(null);
 
   function handlePointerDown(code: string) {
     if (tab !== "tenho") return;
@@ -210,6 +211,12 @@ export function Gabarito({
       longPressFired.current = false;
       return;
     }
+    const now = Date.now();
+    const last = lastTapRef.current;
+    if (last && last.code === code && now - last.at < 450) {
+      return;
+    }
+    lastTapRef.current = { code, at: now };
     tapCell(code);
   }
 
@@ -491,7 +498,7 @@ export function Gabarito({
                         onPointerLeave={handlePointerEnd}
                         onPointerCancel={handlePointerEnd}
                         onClick={() => handleClick(cell.code)}
-                        className={`relative flex aspect-[4/3] select-none items-center justify-center rounded-md border px-0.5 text-center transition ${
+                        className={`relative flex aspect-[4/3] select-none items-center justify-center rounded-md border px-0.5 text-center transition touch-manipulation ${
                           marked
                             ? `border-transparent text-white ${activeRing}`
                             : activeRing
