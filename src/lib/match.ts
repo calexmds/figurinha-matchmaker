@@ -1,6 +1,9 @@
 import type { TradeMatch } from "@/lib/types";
 import type { GroupMarket } from "@/lib/group-intelligence";
-import { computeTradeHeatBonus } from "@/lib/group-intelligence";
+import {
+  computeTradeHeatBonus,
+  getHeatWeight,
+} from "@/lib/group-intelligence";
 
 type TradeProfile = {
   userId: string;
@@ -9,6 +12,10 @@ type TradeProfile = {
   duplicateCodes: Set<string>;
   needCodes: Set<string>;
 };
+
+const MAX_PER_SIDE = 8;
+const MAX_RATIO = 2.5;
+const MAX_ONE_SIDED = 3;
 
 function buildTradeProfile(
   userId: string,
@@ -31,6 +38,108 @@ function buildTradeProfile(
     duplicateCodes,
     needCodes: new Set(needs),
   };
+}
+
+function stickerTradeValue(code: string, market?: GroupMarket): number {
+  const info = market?.byCode.get(code);
+  if (!info) return 1;
+  return info.demand + getHeatWeight(info.level);
+}
+
+function selectBalancedSubset(
+  receiveAll: string[],
+  giveAll: string[],
+  market?: GroupMarket,
+): { receive: string[]; give: string[] } | null {
+  if (receiveAll.length === 0 && giveAll.length === 0) return null;
+
+  if (receiveAll.length === 0 || giveAll.length === 0) {
+    const isReceiveOnly = receiveAll.length > 0;
+    const codes = isReceiveOnly ? receiveAll : giveAll;
+    const sorted = [...codes].sort(
+      (a, b) => stickerTradeValue(b, market) - stickerTradeValue(a, market),
+    );
+    const capped = sorted.slice(0, Math.min(MAX_ONE_SIDED, MAX_PER_SIDE));
+    return isReceiveOnly
+      ? { receive: capped, give: [] }
+      : { receive: [], give: capped };
+  }
+
+  const ratio =
+    Math.max(receiveAll.length, giveAll.length) /
+    Math.min(receiveAll.length, giveAll.length);
+
+  let n = Math.min(receiveAll.length, giveAll.length, MAX_PER_SIDE);
+  if (ratio > MAX_RATIO) {
+    n = Math.min(
+      n,
+      Math.ceil(Math.min(receiveAll.length, giveAll.length) * MAX_RATIO),
+      MAX_PER_SIDE,
+    );
+  }
+
+  const receiveSorted = [...receiveAll].sort(
+    (a, b) => stickerTradeValue(b, market) - stickerTradeValue(a, market),
+  );
+  const giveSorted = [...giveAll].sort(
+    (a, b) => stickerTradeValue(a, market) - stickerTradeValue(b, market),
+  );
+
+  let selectedReceive = receiveSorted.slice(0, n);
+  let selectedGive = giveSorted.slice(0, n);
+
+  const goldenGive = selectedGive.filter(
+    (code) => market?.byCode.get(code)?.level === "golden",
+  );
+  if (goldenGive.length > 0) {
+    const hasWorthyReceive = selectedReceive.some((code) => {
+      const level = market?.byCode.get(code)?.level;
+      const demand = market?.byCode.get(code)?.demand ?? 0;
+      return level === "golden" || level === "hot" || demand >= 3;
+    });
+    if (!hasWorthyReceive) {
+      const giveWithoutGolden = selectedGive.filter(
+        (code) => market?.byCode.get(code)?.level !== "golden",
+      );
+      const excluded = new Set(giveWithoutGolden);
+      for (const code of giveSorted) {
+        if (giveWithoutGolden.length >= n) break;
+        if (!excluded.has(code) && market?.byCode.get(code)?.level !== "golden") {
+          giveWithoutGolden.push(code);
+          excluded.add(code);
+        }
+      }
+      selectedGive = giveWithoutGolden.slice(0, n);
+    }
+  }
+
+  return {
+    receive: selectedReceive.sort(),
+    give: selectedGive.sort(),
+  };
+}
+
+function scoreBalancedTrade(
+  receive: string[],
+  give: string[],
+  market: GroupMarket | undefined,
+  heatScore: number,
+): number {
+  const paired = Math.min(receive.length, give.length);
+  let score = paired * 15;
+
+  if (receive.length === give.length && paired > 0) {
+    score += 12;
+  }
+
+  score -= Math.abs(receive.length - give.length) * 6;
+
+  if (receive.length === 0 || give.length === 0) {
+    score = Math.max(1, Math.floor(score * 0.35));
+  }
+
+  score += heatScore;
+  return score;
 }
 
 export function computeTradeMatches(
@@ -67,20 +176,18 @@ export function computeTradeMatches(
       member.needs,
     );
 
-    const receive = [...current.needCodes].filter((code) =>
+    const receiveAll = [...current.needCodes].filter((code) =>
       other.duplicateCodes.has(code),
     );
-    const give = [...current.duplicateCodes].filter((code) =>
+    const giveAll = [...current.duplicateCodes].filter((code) =>
       other.needCodes.has(code),
     );
 
-    if (receive.length === 0 && give.length === 0) continue;
+    const balanced = selectBalancedSubset(receiveAll, giveAll, market);
+    if (!balanced) continue;
+    if (balanced.receive.length === 0 && balanced.give.length === 0) continue;
 
-    const balanceBonus =
-      receive.length === 0 || give.length === 0
-        ? 0
-        : Math.min(receive.length, give.length) * 2;
-    let score = receive.length * 10 + give.length * 5 + balanceBonus;
+    const { receive, give } = balanced;
 
     let heatScore = 0;
     let bargainPower = 0;
@@ -95,15 +202,16 @@ export function computeTradeMatches(
       hotGive = heat.hotGive;
       hotReceive = heat.hotReceive;
       bargainTip = heat.bargainTip;
-      score += heatScore;
     }
+
+    const score = scoreBalancedTrade(receive, give, market, heatScore);
 
     matches.push({
       userId: other.userId,
       name: other.name,
       avatarUrl: other.avatarUrl,
-      receive: receive.sort(),
-      give: give.sort(),
+      receive,
+      give,
       receiveCount: receive.length,
       giveCount: give.length,
       score,

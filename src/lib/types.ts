@@ -94,3 +94,24 @@ export type TradeMatch = {
   hotReceive?: string[];
   bargainTip?: string | null;
 };
+
+export type StickerListingType = "sell" | "buy";
+
+export type StickerListing = {
+  id: string;
+  userId: string;
+  userName: string;
+  groupId: string;
+  groupName: string;
+  stickerId: string;
+  code: string;
+  listingType: StickerListingType;
+  priceNote: string | null;
+  createdAt: string;
+};
+
+export type MarketOpportunity = {
+  listing: StickerListing;
+  /** Comprar de alguém que está vendendo */
+  kind: "buy_from" | "sell_to";
+};

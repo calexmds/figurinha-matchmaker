@@ -56,14 +56,30 @@ export default async function LoginPage({
 
         {params.error ? (
           <p className="mb-4 rounded-md border border-[#f3c9c5] bg-[#fdf0ef] px-4 py-3 text-sm text-[#c42b1c]">
-            {params.error === "email"
-              ? "Não foi possível enviar o link por e-mail."
-              : "Não foi possível entrar. Tente novamente."}
-            {params.reason ? (
-              <span className="mt-1 block text-xs opacity-80">
-                {params.reason}
-              </span>
-            ) : null}
+            {params.error === "email" &&
+            params.reason?.toLowerCase().includes("rate limit") ? (
+              <>
+                <span className="font-semibold">
+                  Muitas tentativas de e-mail em pouco tempo.
+                </span>
+                <span className="mt-2 block text-xs leading-5 text-[#5f5f5f]">
+                  Use <strong>Entrar com Google</strong> abaixo — é instantâneo e
+                  não depende de e-mail. Ou aguarde cerca de 1 hora e tente de
+                  novo.
+                </span>
+              </>
+            ) : params.error === "email" ? (
+              <>
+                Não foi possível enviar o link por e-mail.
+                {params.reason ? (
+                  <span className="mt-1 block text-xs opacity-80">
+                    {params.reason}
+                  </span>
+                ) : null}
+              </>
+            ) : (
+              "Não foi possível entrar. Tente novamente."
+            )}
           </p>
         ) : null}
 

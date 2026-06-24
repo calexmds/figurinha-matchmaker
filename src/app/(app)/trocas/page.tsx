@@ -2,13 +2,25 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { TradeCard } from "@/components/trade-card";
 import { PendingTradeCard } from "@/components/pending-trade-card";
-import { getUserTradeSummary } from "@/lib/data";
+import { MarketListingPanel } from "@/components/market-listing-panel";
+import { MarketOpportunityCard } from "@/components/market-opportunity-card";
+import { getUserTradeSummary, getUserOwned } from "@/lib/data";
 import { computeAllGroupMatches } from "@/lib/multi-group-trades";
 import { getUserGroupsWithMembers } from "@/lib/groups";
 import {
   getCachedGroupTradeData,
   summarizeTradeDiagnostics,
 } from "@/lib/group-trade-data";
+import { getMarketPageData } from "@/lib/market-listings";
+import {
+  deriveNeeds,
+  deriveTradeDuplicates,
+  ownedMapFromList,
+} from "@/lib/stickers/collection";
+import {
+  applyReservationsToLists,
+  getUserReservations,
+} from "@/lib/trades";
 
 export default async function TradesPage({
   searchParams,
@@ -20,6 +32,8 @@ export default async function TradesPage({
     rejected?: string;
     completed?: string;
     cancelled?: string;
+    listing_saved?: string;
+    listing_removed?: string;
   }>;
 }) {
   const query = await searchParams;
@@ -43,10 +57,26 @@ export default async function TradesPage({
     );
   }
 
-  const [{ stats }, tradeResult] = await Promise.all([
+  const [{ stats }, tradeResult, owned, reservations] = await Promise.all([
     getUserTradeSummary(supabase, user.id),
     computeAllGroupMatches(supabase, user.id),
+    getUserOwned(supabase, user.id),
+    getUserReservations(supabase, user.id),
   ]);
+
+  const { availableDuplicates, availableNeeds } = applyReservationsToLists(
+    deriveTradeDuplicates(ownedMapFromList(owned)),
+    deriveNeeds(ownedMapFromList(owned)),
+    reservations,
+  );
+
+  const marketData = await getMarketPageData(
+    supabase,
+    user.id,
+    groups.map((g) => ({ id: g.id, name: g.name })),
+    availableDuplicates.map((d) => d.code),
+    availableNeeds,
+  );
 
   const { matches, pendingTrades, pendingPartnerKeys, groupCount, totalMembers } =
     tradeResult;
@@ -84,7 +114,9 @@ export default async function TradesPage({
     (query.completed
       ? "Troca concluída! Coleções dos dois atualizadas."
       : null) ??
-    (query.cancelled ? "Troca cancelada." : null);
+    (query.cancelled ? "Troca cancelada." : null) ??
+    (query.listing_saved ? "Anúncio publicado!" : null) ??
+    (query.listing_removed ? "Anúncio removido." : null);
 
   const feedbackIsError = !!query.error;
 
@@ -120,7 +152,7 @@ export default async function TradesPage({
           {totalMembers > 0 ? (
             <> · {totalMembers} colecionadores no radar</>
           ) : null}
-          {" "}— proponha, aceite, encontre pessoalmente e confirme a troca.
+          {" "}— proponha trocas, negocie compra e venda, encontre pessoalmente e confirme.
         </p>
       </div>
 
@@ -191,6 +223,39 @@ export default async function TradesPage({
             ))}
           </div>
         )}
+      </section>
+
+      <section className="space-y-4">
+        <div>
+          <h3 className="text-base font-bold text-[#1b1b1b]">
+            Comprar e vender
+          </h3>
+          <p className="mt-1 text-sm text-[#5f5f5f]">
+            Anuncie repetidas ou figurinhas que quer comprar. O preço é
+            combinado no WhatsApp — sem pagamento pelo app.
+          </p>
+        </div>
+
+        {marketData.opportunities.length > 0 ? (
+          <div className="space-y-4">
+            <h4 className="text-sm font-semibold uppercase tracking-wide text-[#5f5f5f]">
+              Oportunidades no grupo ({marketData.opportunities.length})
+            </h4>
+            {marketData.opportunities.map((opportunity) => (
+              <MarketOpportunityCard
+                key={`${opportunity.kind}-${opportunity.listing.id}`}
+                opportunity={opportunity}
+              />
+            ))}
+          </div>
+        ) : null}
+
+        <MarketListingPanel
+          ownListings={marketData.ownListings}
+          sellOptions={marketData.sellOptions}
+          buyOptions={marketData.buyOptions}
+          defaultGroupId={groups[0]?.id}
+        />
       </section>
     </div>
   );

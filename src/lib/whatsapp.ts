@@ -50,3 +50,29 @@ ${missText}
 
 Veja no app: ${APP_URL}/trocas`;
 }
+
+export function buildBuyMessage(
+  sellerName: string,
+  code: string,
+  priceLabel: string,
+) {
+  return `Oi ${sellerName}! Vi no Figurinha Matchmaker que você está vendendo a figurinha ${code}.
+
+Valor anunciado: ${priceLabel}
+
+Topa combinar? 💰
+${APP_URL}/trocas`;
+}
+
+export function buildSellMessage(
+  buyerName: string,
+  code: string,
+  priceLabel: string,
+) {
+  return `Oi ${buyerName}! Vi no Figurinha Matchmaker que você quer comprar a figurinha ${code}.
+
+${priceLabel === "A combinar" ? "Podemos combinar o valor." : `Você anunciou até ${priceLabel}.`}
+
+Topa negociar? 💰
+${APP_URL}/trocas`;
+}

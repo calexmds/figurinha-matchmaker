@@ -22,6 +22,16 @@ import {
   parseNeedsInput,
   parseStickerInput,
 } from "@/lib/stickers/parse";
+import {
+  resolveStickerId,
+} from "@/lib/market-listings";
+import {
+  deriveNeeds,
+  deriveTradeDuplicates,
+  ownedMapFromList,
+} from "@/lib/stickers/collection";
+import { getUserOwned } from "@/lib/data";
+import { applyReservationsToLists, getUserReservations } from "@/lib/trades";
 
 export async function signInWithGoogle(returnTo?: string) {
   const supabase = await createClient();
@@ -563,4 +573,103 @@ export async function cancelTrade(formData: FormData) {
   }
 
   redirect("/trocas?cancelled=1");
+}
+
+export async function saveStickerListing(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const groupId = String(formData.get("groupId") ?? "");
+  const listingType = String(formData.get("listingType") ?? "") as "sell" | "buy";
+  const code = String(formData.get("code") ?? "").trim().toUpperCase();
+  const priceNoteRaw = String(formData.get("priceNote") ?? "").trim();
+  const priceNote = priceNoteRaw.length > 0 ? priceNoteRaw.slice(0, 80) : null;
+
+  if (!groupId || (listingType !== "sell" && listingType !== "buy") || !code) {
+    redirect("/trocas?error=Anúncio inválido.");
+  }
+
+  const { data: membership } = await supabase
+    .from("group_members")
+    .select("id")
+    .eq("group_id", groupId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!membership) {
+    redirect("/trocas?error=Você não participa deste grupo.");
+  }
+
+  const owned = await getUserOwned(supabase, user.id);
+  const reservations = await getUserReservations(supabase, user.id);
+  const { availableDuplicates, availableNeeds } = applyReservationsToLists(
+    deriveTradeDuplicates(ownedMapFromList(owned)),
+    deriveNeeds(ownedMapFromList(owned)),
+    reservations,
+  );
+
+  const dupCodes = new Set(availableDuplicates.map((d) => d.code));
+  const needCodes = new Set(availableNeeds);
+
+  if (listingType === "sell" && !dupCodes.has(code)) {
+    redirect(
+      "/trocas?error=Você só pode vender repetidas que ainda não estão reservadas em troca.",
+    );
+  }
+
+  if (listingType === "buy" && !needCodes.has(code)) {
+    redirect("/trocas?error=Você só pode anunciar compra de figurinhas que ainda precisa.");
+  }
+
+  const stickerId = await resolveStickerId(supabase, code);
+  if (!stickerId) {
+    redirect("/trocas?error=Figurinha não encontrada.");
+  }
+
+  const { error } = await supabase.from("sticker_listings").upsert(
+    {
+      user_id: user.id,
+      group_id: groupId,
+      sticker_id: stickerId,
+      listing_type: listingType,
+      price_note: priceNote,
+    },
+    { onConflict: "user_id,group_id,sticker_id,listing_type" },
+  );
+
+  if (error) {
+    redirect(`/trocas?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/trocas");
+  redirect("/trocas?listing_saved=1");
+}
+
+export async function removeStickerListing(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const listingId = String(formData.get("listingId") ?? "");
+  if (!listingId) redirect("/trocas?error=Anúncio inválido.");
+
+  const { error } = await supabase
+    .from("sticker_listings")
+    .delete()
+    .eq("id", listingId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    redirect(`/trocas?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/trocas");
+  redirect("/trocas?listing_removed=1");
 }

@@ -20,10 +20,10 @@ export function AuthPanel({ nextPath, groupName, compact }: AuthPanelProps) {
 
       <a
         href={googleHref}
-        className="flex min-h-12 w-full items-center justify-center gap-3 rounded-md border border-[#d0d0d0] bg-white px-4 py-3 text-sm font-semibold text-[#1b1b1b] transition hover:bg-[#f5f5f5]"
+        className="flex min-h-12 w-full items-center justify-center gap-3 rounded-md border border-[#0067c0] bg-[#0067c0] px-4 py-3 text-sm font-semibold text-white transition active:bg-[#005aa8]"
       >
         <GoogleIcon />
-        Entrar com Google
+        Entrar com Google (recomendado)
       </a>
 
       <div className="flex items-center gap-3">
