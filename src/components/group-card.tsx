@@ -8,7 +8,7 @@ import {
 } from "@/app/actions";
 import type { UserGroupDetail } from "@/lib/groups";
 import { APP_URL } from "@/lib/constants";
-import { WhatsAppShareButton } from "@/components/whatsapp-share";
+import { WhatsAppShareButton, CopyInviteButton } from "@/components/whatsapp-share";
 import { buildInviteMessage } from "@/lib/whatsapp";
 
 type GroupCardProps = {
@@ -170,10 +170,20 @@ export function GroupCard({ group, currentUserId }: GroupCardProps) {
                 {APP_URL}/join/{group.inviteCode}
               </span>
             </p>
-            <WhatsAppShareButton
-              message={buildInviteMessage(group.name, group.inviteCode)}
-              className="mt-3 w-full"
-            />
+            <div className="mt-3 flex flex-col gap-2">
+              <WhatsAppShareButton
+                message={buildInviteMessage(group.name, group.inviteCode)}
+                className="w-full"
+              />
+              <CopyInviteButton
+                text={buildInviteMessage(group.name, group.inviteCode)}
+                className="w-full"
+              />
+            </div>
+            <p className="mt-2 text-[11px] leading-4 text-[#8a8a8a]">
+              No iPhone, se o WhatsApp abrir vazio, use{" "}
+              <strong>Copiar convite</strong> e cole na conversa.
+            </p>
           </div>
 
           <div>
