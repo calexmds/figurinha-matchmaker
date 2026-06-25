@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/app-shell";
 import { requireUser } from "@/lib/auth";
+import { isAdminUser } from "@/lib/admin";
 import { getTradesAttentionCount } from "@/lib/trades";
 
 export default async function AppLayout({
@@ -11,6 +12,11 @@ export default async function AppLayout({
   const tradesBadgeCount = await getTradesAttentionCount(supabase, user.id);
 
   return (
-    <AppShell tradesBadgeCount={tradesBadgeCount}>{children}</AppShell>
+    <AppShell
+      tradesBadgeCount={tradesBadgeCount}
+      showAdminLink={isAdminUser(user)}
+    >
+      {children}
+    </AppShell>
   );
 }

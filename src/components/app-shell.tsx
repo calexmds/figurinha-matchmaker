@@ -12,9 +12,11 @@ import {
 function AppShellInner({
   children,
   tradesBadgeCount = 0,
+  showAdminLink = false,
 }: {
   children: React.ReactNode;
   tradesBadgeCount?: number;
+  showAdminLink?: boolean;
 }) {
   const pathname = usePathname();
   usePrefetchAppRoutes();
@@ -22,7 +24,7 @@ function AppShellInner({
   return (
     <div className="flex min-h-dvh flex-col bg-mica">
       <div className="relative sticky top-0 z-20">
-        <AppHeader pathname={pathname} />
+        <AppHeader pathname={pathname} showAdminLink={showAdminLink} />
         <NavProgressBar />
       </div>
       <main className="mx-auto w-full max-w-lg flex-1 px-4 py-4 pb-28">
@@ -36,13 +38,18 @@ function AppShellInner({
 export function AppShell({
   children,
   tradesBadgeCount = 0,
+  showAdminLink = false,
 }: {
   children: React.ReactNode;
   tradesBadgeCount?: number;
+  showAdminLink?: boolean;
 }) {
   return (
     <NavPendingProvider>
-      <AppShellInner tradesBadgeCount={tradesBadgeCount}>
+      <AppShellInner
+        tradesBadgeCount={tradesBadgeCount}
+        showAdminLink={showAdminLink}
+      >
         {children}
       </AppShellInner>
     </NavPendingProvider>
