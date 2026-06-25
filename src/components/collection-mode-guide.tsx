@@ -67,7 +67,7 @@ function Step({
         className={cn(
           "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold",
           state === "done" && "bg-win-green text-white",
-          state === "active" && "bg-win-amber/15 text-win-amber ring-2 ring-win-amber/40",
+          state === "active" && "bg-need/15 text-need ring-2 ring-need/40",
           state === "pending" && "bg-mica text-ink-muted",
         )}
       >

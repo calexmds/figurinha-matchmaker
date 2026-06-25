@@ -312,8 +312,12 @@ export function Gabarito({
         { id: "preciso" as const, label: "Preciso", editable: false },
       ] as const);
 
-  const accent =
-    tab === "tenho" ? "#0067c0" : tab === "repetidas" ? "#0f7b0f" : "#9a6700";
+  const tabAccent =
+    tab === "tenho"
+      ? "var(--color-accent)"
+      : tab === "repetidas"
+        ? "var(--color-win-green)"
+        : "var(--color-need)";
 
   const normalize = (s: string) =>
     s
@@ -375,7 +379,7 @@ export function Gabarito({
       : tab === "repetidas"
         ? "Somente leitura — figurinhas com mais de 1 cópia (extras para trocar)."
         : precisoShowAll
-          ? "Verde = já tenho · Âmbar = ainda falta."
+          ? "Verde = já tenho · Ciano = ainda falta."
           : "Mostrando só o que falta. Use “Ver álbum” para rever figurinhas já marcadas em Tenho.";
 
   return (
@@ -413,7 +417,7 @@ export function Gabarito({
                   (item.id === "repetidas"
                     ? "text-win-green"
                     : item.id === "preciso"
-                      ? "text-win-amber"
+                      ? "text-need"
                       : "text-accent"),
               )}
             >
@@ -437,7 +441,7 @@ export function Gabarito({
           <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-line">
             <div
               className="h-full rounded-full transition-all"
-              style={{ width: `${progressPct}%`, background: accent }}
+              style={{ width: `${progressPct}%`, background: tabAccent }}
             />
           </div>
         ) : null}
@@ -581,7 +585,7 @@ export function Gabarito({
                   {count > 0 ? (
                     <span
                       className="rounded-full px-2 py-0.5 text-xs font-bold text-white"
-                      style={{ background: accent }}
+                      style={{ background: tabAccent }}
                     >
                       {count}
                     </span>
@@ -651,7 +655,7 @@ export function Gabarito({
                             `border-line bg-mica text-ink-soft ${activeRing}`,
                           readOnly && "cursor-default opacity-95",
                         )}
-                        style={filled ? { background: accent } : undefined}
+                        style={filled ? { background: tabAccent } : undefined}
                       >
                         <span className="text-[10px] font-bold leading-tight tracking-tight sm:text-[11px]">
                           {cell.label}
