@@ -11,6 +11,13 @@ import {
   isSparseMode,
   tradeableQuantity,
 } from "@/lib/stickers/collection";
+import {
+  countSectionForTab,
+  getGabaritoCellVariant,
+  isGabaritoCellVisible,
+  normalizeStickerCode,
+  resolveStickerQty,
+} from "@/lib/stickers/gabarito-cell-state";
 import type { CollectionEntryMode, HeatLevel } from "@/lib/types";
 import { getHeatEmoji } from "@/lib/group-intelligence";
 import { TOTAL_STICKERS } from "@/lib/constants";
@@ -55,7 +62,13 @@ export function Gabarito({
   );
   const [precisoShowAll, setPrecisoShowAll] = useState(false);
   const [repetidasShowAll, setRepetidasShowAll] = useState(false);
-  const [owned, setOwned] = useState<Record<string, number>>(initialOwned);
+  const [owned, setOwned] = useState<Record<string, number>>(() => {
+    const map: Record<string, number> = {};
+    for (const [code, qty] of Object.entries(initialOwned)) {
+      map[normalizeStickerCode(code)] = qty;
+    }
+    return map;
+  });
   const [openSection, setOpenSection] = useState<string | null>(
     sections[1]?.id ?? sections[0]?.id ?? null,
   );
@@ -177,8 +190,9 @@ export function Gabarito({
 
   const setQuantity = useCallback(
     (code: string, quantity: number) => {
+      const normalized = normalizeStickerCode(code);
       const q = Math.max(0, Math.min(99, quantity));
-      const block = reservationBlock(code, q);
+      const block = reservationBlock(normalized, q);
       if (block) {
         setErrorDetail(block);
         setStatus("error");
@@ -187,55 +201,59 @@ export function Gabarito({
       setOwned((prev) => {
         const next = { ...prev };
         if (sparse) {
-          next[code] = q;
+          next[normalized] = q;
         } else if (q === 0) {
-          delete next[code];
+          delete next[normalized];
         } else {
-          next[code] = q;
+          next[normalized] = q;
         }
         return next;
       });
-      queueEdit(code, q);
+      queueEdit(normalized, q);
     },
     [queueEdit, reservationBlock, sparse],
   );
 
   const tapCell = useCallback(
     (code: string) => {
+      const normalized = normalizeStickerCode(code);
+      const current = owned[normalized] ?? (sparse ? 1 : 0);
+      let nextQty = current;
+
+      if (sparse && tab === "preciso") {
+        nextQty = current >= 1 ? 0 : 1;
+      } else if (sparse && tab === "repetidas") {
+        if (current < 1) return;
+        nextQty = current === 1 ? 2 : current + 1;
+      } else if (tab === "tenho") {
+        nextQty = current + 1;
+      } else {
+        return;
+      }
+
+      const block = reservationBlock(normalized, nextQty);
+      if (block) {
+        setErrorDetail(block);
+        setStatus("error");
+        return;
+      }
+
       setOwned((prev) => {
-        const current = prev[code] ?? (sparse ? 1 : 0);
-        let nextQty = current;
-
-        if (sparse && tab === "preciso") {
-          nextQty = current >= 1 ? 0 : 1;
-        } else if (sparse && tab === "repetidas") {
-          if (current < 1) return prev;
-          nextQty = current === 1 ? 2 : current + 1;
-        } else if (tab === "tenho") {
-          nextQty = current + 1;
-        } else {
-          return prev;
-        }
-
-        const block = reservationBlock(code, nextQty);
-        if (block) {
-          setErrorDetail(block);
-          setStatus("error");
-          return prev;
-        }
-        queueEdit(code, nextQty);
+        const next = { ...prev };
         if (sparse) {
-          return { ...prev, [code]: nextQty };
-        }
-        if (nextQty === 0) {
-          const next = { ...prev };
-          delete next[code];
+          next[normalized] = nextQty;
           return next;
         }
-        return { ...prev, [code]: nextQty };
+        if (nextQty === 0) {
+          delete next[normalized];
+        } else {
+          next[normalized] = nextQty;
+        }
+        return next;
       });
+      queueEdit(normalized, nextQty);
     },
-    [tab, queueEdit, reservationBlock, sparse],
+    [tab, queueEdit, reservationBlock, sparse, owned],
   );
 
   const isEditableTab =
@@ -312,27 +330,23 @@ export function Gabarito({
     : sections;
 
   const cellVisible = (code: string) => {
-    const qty = owned[code] ?? (sparse ? 1 : 0);
-    if (sparse && tab === "preciso") {
-      if (q || precisoShowAll) return true;
-      return qty < 1;
-    }
-    if (sparse && tab === "repetidas") {
-      if (q || repetidasShowAll) return true;
-      return qty > 1;
-    }
-    if (tab === "tenho") return true;
-    if (tab === "repetidas") return qty > 1;
-    return qty < 1;
+    const qty = resolveStickerQty(owned, code, sparse);
+    return isGabaritoCellVisible({
+      tab,
+      sparse,
+      qty,
+      showAlbum: tab === "preciso" ? precisoShowAll : repetidasShowAll,
+      searching: !!q,
+    });
   };
 
   const sectionCount = (section: GabaritoSection) =>
-    section.cells.filter((c) => {
-      const qty = owned[c.code] ?? (sparse ? 1 : 0);
-      if (tab === "tenho") return qty > 0;
-      if (tab === "repetidas") return qty > 1;
-      return qty < 1;
-    }).length;
+    countSectionForTab(
+      tab,
+      owned,
+      section.cells.map((c) => c.code),
+      sparse,
+    );
 
   const reservedCount =
     reservedGive.current.size + reservedReceive.current.size;
@@ -360,7 +374,9 @@ export function Gabarito({
       ? "Toque para marcar que você tem (+1). Segure para ajustar a quantidade. O app calcula repetidas e preciso sozinho."
       : tab === "repetidas"
         ? "Somente leitura — figurinhas com mais de 1 cópia (extras para trocar)."
-        : "Somente leitura — figurinhas que ainda não estão marcadas em Tenho.";
+        : precisoShowAll
+          ? "Verde = já tenho · Âmbar = ainda falta."
+          : "Mostrando só o que falta. Use “Ver álbum” para rever figurinhas já marcadas em Tenho.";
 
   return (
     <div className="space-y-4">
@@ -426,7 +442,7 @@ export function Gabarito({
           </div>
         ) : null}
 
-        {(sparse && tab === "preciso") || (sparse && tab === "repetidas") ? (
+        {tab === "preciso" || (sparse && tab === "repetidas") ? (
           <div className="mt-2 grid grid-cols-2 gap-1 rounded-lg border border-line bg-mica p-0.5">
             {tab === "preciso" ? (
               <>
@@ -524,6 +540,18 @@ export function Gabarito({
             className="py-8"
           />
         ) : null}
+        {!sparse &&
+        tab === "preciso" &&
+        !precisoShowAll &&
+        !q &&
+        needCount === 0 ? (
+          <EmptyState
+            icon="album"
+            title="Nenhuma figurinha faltando"
+            description="Marque em Tenho o que você tem. Use “Ver álbum” para conferir o restante."
+            className="py-8"
+          />
+        ) : null}
         {filteredSections.map((section) => {
           const visibleCells = section.cells.filter((c) => cellVisible(c.code));
           if (visibleCells.length === 0) {
@@ -565,18 +593,12 @@ export function Gabarito({
               {isOpen ? (
                 <div className="grid grid-cols-3 gap-2 border-t border-line p-3 sm:grid-cols-4">
                   {visibleCells.map((cell) => {
-                    const qty = owned[cell.code] ?? (sparse ? 1 : 0);
-                    const marked =
-                      tab === "tenho"
-                        ? qty > 0
-                        : tab === "repetidas"
-                          ? qty > 1
-                          : qty < 1;
-                    const dimmed =
-                      sparse &&
-                      tab === "preciso" &&
-                      qty >= 1 &&
-                      !marked;
+                    const qty = resolveStickerQty(owned, cell.code, sparse);
+                    const variant = getGabaritoCellVariant({ tab, sparse, qty });
+                    const filled =
+                      variant === "owned-editable" ||
+                      variant === "need" ||
+                      variant === "extra";
                     const reservedOut =
                       (tab === "tenho" || tab === "repetidas") &&
                       qty > 1 &&
@@ -618,16 +640,18 @@ export function Gabarito({
                         onPointerLeave={handlePointerEnd}
                         onPointerCancel={handlePointerEnd}
                         onClick={() => handleClick(cell.code)}
-                        className={`relative flex aspect-[4/3] select-none items-center justify-center rounded-md border px-0.5 text-center transition touch-manipulation ${
-                          marked
-                            ? `border-transparent text-white ${activeRing}`
-                            : dimmed
-                              ? `border-line bg-mica text-ink-muted ${activeRing}`
-                              : activeRing
-                                ? `border-line bg-mica text-ink-soft ${activeRing}`
-                                : "border-line bg-mica text-ink-soft"
-                        } ${readOnly ? "cursor-default opacity-95" : ""}`}
-                        style={marked ? { background: accent } : undefined}
+                        className={cn(
+                          "relative flex aspect-[4/3] select-none items-center justify-center rounded-md border px-0.5 text-center transition touch-manipulation",
+                          filled && `border-transparent text-white ${activeRing}`,
+                          variant === "owned-readonly" &&
+                            `border-win-green/40 bg-[#eef7ee] text-win-green ${activeRing}`,
+                          variant === "dimmed-sparse" &&
+                            `border-line bg-mica text-ink-muted ${activeRing}`,
+                          variant === "empty" &&
+                            `border-line bg-mica text-ink-soft ${activeRing}`,
+                          readOnly && "cursor-default opacity-95",
+                        )}
+                        style={filled ? { background: accent } : undefined}
                       >
                         <span className="text-[10px] font-bold leading-tight tracking-tight sm:text-[11px]">
                           {cell.label}
