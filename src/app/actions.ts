@@ -135,7 +135,7 @@ export async function createGroup(formData: FormData) {
 
       revalidatePath("/grupo");
       revalidatePath("/home");
-      redirect("/onboarding");
+      redirect(`/grupo?created=${encodeURIComponent(group.invite_code)}`);
     }
 
     inviteCode = generateInviteCode();

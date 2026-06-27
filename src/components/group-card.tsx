@@ -14,6 +14,7 @@ import {
   WhatsAppShareButton,
   CopyInviteButton,
 } from "@/components/whatsapp-share";
+import { WHATSAPP_SHARE_LABEL } from "@/lib/marketing-copy";
 import { buildInviteMessage, buildNudgeMessage } from "@/lib/whatsapp";
 import { Button, ButtonLink, getButtonClassName } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
@@ -254,7 +255,7 @@ export function GroupCard({ group, progress, currentUserId }: GroupCardProps) {
                 message={buildInviteMessage(group.name, group.inviteCode)}
                 label={
                   needsMoreMembers
-                    ? "Convidar no WhatsApp"
+                    ? WHATSAPP_SHARE_LABEL
                     : "Convidar de novo no WhatsApp"
                 }
                 className="w-full"

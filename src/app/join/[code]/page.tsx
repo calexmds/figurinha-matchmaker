@@ -3,7 +3,6 @@ import { AuthPanel } from "@/components/auth-panel";
 import { InAppBrowserBanner } from "@/components/in-app-browser-banner";
 import { Callout } from "@/components/ui/callout";
 import { EmptyState } from "@/components/ui/empty-state";
-import { APP_NAME } from "@/lib/constants";
 import { normalizeInviteCode } from "@/lib/invite";
 import { createClient } from "@/lib/supabase/server";
 import { lookupGroupByInvite } from "@/lib/group-join";
@@ -70,8 +69,9 @@ export default async function JoinPage({
           {groupData.name}
         </h1>
         <p className="mt-3 text-sm leading-6 text-ink-soft">
-          Você foi convidado para trocar figurinhas no {APP_NAME}. Entre e
-          marque o que você tem no gabarito.
+          Entre no grupo <strong className="text-ink">{groupData.name}</strong>{" "}
+          e marque o que você tem, suas repetidas e o que falta. O app mostra
+          automaticamente quem troca com quem.
         </p>
 
         {query.error ? (

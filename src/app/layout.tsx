@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: APP_NAME,
   description:
-    "Troca de figurinhas da Copa 2026 com match automático no seu grupo.",
+    "Complete seu álbum mais rápido com seu próprio grupo de troca. Grátis, sem desconhecidos.",
   metadataBase: new URL(APP_URL),
   manifest: "/manifest.webmanifest",
   appleWebApp: {
@@ -26,7 +26,8 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: APP_NAME,
-    description: "Match automático de figurinhas Copa 2026 no seu grupo.",
+    description:
+      "Complete seu álbum com seu grupo de troca. Match automático, grátis.",
     url: APP_URL,
     siteName: APP_NAME,
     locale: "pt_BR",

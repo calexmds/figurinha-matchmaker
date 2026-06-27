@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { InstallPrompt } from "@/components/install-prompt";
 import { StatCard } from "@/components/stat-card";
@@ -7,7 +6,15 @@ import { WhatsAppShareButton } from "@/components/whatsapp-share";
 import { ButtonLink } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { CopaHero } from "@/components/ui/copa-hero";
-import { buildProfileMessage } from "@/lib/whatsapp";
+import {
+  buildInviteMessage,
+  buildProfileMessage,
+} from "@/lib/whatsapp";
+import {
+  LANDING_HEADLINE,
+  PRIMARY_CTA_CREATE_GROUP,
+  WHATSAPP_SHARE_LABEL,
+} from "@/lib/marketing-copy";
 import {
   buildGroupIntelligence,
   membersFromTradeData,
@@ -86,15 +93,39 @@ export default async function HomePage() {
       s.progress.memberCount < 2 || s.progress.pendingMembers.length > 0,
   );
 
+  const primaryGroup = groups[0] ?? null;
+  const soloInGroup =
+    primaryGroup !== null &&
+    (validSnapshots.find((s) => s.group.id === primaryGroup.id)?.progress
+      .memberCount ?? 1) < 2;
+
   const heroTitle =
     goldenCount > 0
       ? "Você tem figurinhas de ouro!"
-      : hasLists
-        ? "Pronto para trocar"
-        : "Cadastre suas listas";
+      : groups.length === 0
+        ? LANDING_HEADLINE
+        : hasLists
+          ? availableInGroups > 0
+            ? `${availableInGroups} trocas possíveis no seu grupo`
+            : "Pronto para trocar"
+          : "Marque seu álbum em 2 minutos";
 
   const heroSubtitle =
-    groups.length > 0 ? (
+    groups.length === 0 ? (
+      <>
+        Crie seu grupo, mande o link no WhatsApp e descubra quem tem o que você
+        precisa — sem perguntar em 10 grupos diferentes.
+      </>
+    ) : soloInGroup && !hasLists ? (
+      <>
+        Você já criou <strong className="text-white">{primaryGroup?.name}</strong>.
+        Mande o link no WhatsApp — quem entrar já aparece combinado com você.
+      </>
+    ) : !hasLists ? (
+      <>
+        Marque repetidas e faltantes — o app cruza com quem já entrou no grupo.
+      </>
+    ) : (
       <>
         {groups.length === 1 ? "Grupo" : "Grupos"}:{" "}
         <strong className="text-white">{groupLabel}</strong>
@@ -102,17 +133,11 @@ export default async function HomePage() {
           <> · {totalMembers} colecionadores no radar</>
         ) : null}
       </>
-    ) : (
-      <>
-        Entre no grupo da família ou amigos para cruzar repetidas.{" "}
-        <Link
-          href="/grupo"
-          className="font-semibold text-white underline decoration-white/50 underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
-        >
-          Crie ou entre agora
-        </Link>
-      </>
     );
+
+  const inviteShareMessage =
+    primaryGroup &&
+    buildInviteMessage(primaryGroup.name, primaryGroup.inviteCode);
 
   return (
     <div className="space-y-6">
@@ -124,7 +149,17 @@ export default async function HomePage() {
         title={heroTitle}
         subtitle={heroSubtitle}
         action={
-          !hasLists ? (
+          groups.length === 0 ? (
+            <ButtonLink href="/grupo" variant="onBrand" fullWidth>
+              {PRIMARY_CTA_CREATE_GROUP}
+            </ButtonLink>
+          ) : soloInGroup && inviteShareMessage ? (
+            <WhatsAppShareButton
+              message={inviteShareMessage}
+              label={WHATSAPP_SHARE_LABEL}
+              className="w-full"
+            />
+          ) : !hasLists ? (
             <ButtonLink href="/onboarding" variant="onBrand" fullWidth>
               Cadastrar figurinhas
             </ButtonLink>
@@ -148,12 +183,24 @@ export default async function HomePage() {
           }
         >
           <p>
-            Abra Grupo para lembrar quem falta marcar figurinhas ou convidar de
-            novo pelo WhatsApp.
+            Mande a mensagem pronta no WhatsApp ou lembre quem ainda não marcou
+            figurinhas.
           </p>
-          <ButtonLink href="/grupo" className="mt-4">
-            Ver progresso do grupo
-          </ButtonLink>
+          {groupsNeedingNudge.length === 1 &&
+          groupsNeedingNudge[0].progress.memberCount < 2 ? (
+            <WhatsAppShareButton
+              message={buildInviteMessage(
+                groupsNeedingNudge[0].group.name,
+                groupsNeedingNudge[0].group.inviteCode,
+              )}
+              label={WHATSAPP_SHARE_LABEL}
+              className="mt-4 w-full"
+            />
+          ) : (
+            <ButtonLink href="/grupo" className="mt-4">
+              Ver progresso do grupo
+            </ButtonLink>
+          )}
         </Callout>
       ) : null}
 

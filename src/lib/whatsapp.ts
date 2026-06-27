@@ -1,17 +1,13 @@
 import { APP_URL } from "@/lib/constants";
 
 export function buildInviteMessage(groupName: string, inviteCode: string) {
-  return `🏆 Grupo de troca Copa 2026 — ${groupName}
+  return `Pessoal, criei nosso grupo de troca de figurinhas da Copa — ${groupName}.
 
-Entra aqui para cruzar repetidas e ver sugestões de troca (só nosso grupo):
+Marque o que você tem, suas repetidas e o que falta. O app mostra automaticamente quem troca com quem:
 
 👉 ${APP_URL}/join/${inviteCode}
 
-1) Toque no link acima
-2) Entre com Google
-3) Marque repetidas e o que falta no gabarito — leva ~2 min
-
-Se o botão não abrir no WhatsApp, toque nos ⋮ e escolha "Abrir no Chrome".`;
+Grátis · só nosso grupo · sem desconhecidos.`;
 }
 
 export function buildNudgeMessage(

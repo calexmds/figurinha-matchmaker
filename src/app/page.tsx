@@ -1,8 +1,15 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CopaBadge } from "@/components/copa-badge";
 import { ButtonLink } from "@/components/ui/button";
 import { CopaHero } from "@/components/ui/copa-hero";
-import { APP_NAME, APP_URL, TOTAL_STICKERS } from "@/lib/constants";
+import { APP_URL } from "@/lib/constants";
+import {
+  LANDING_BODY,
+  LANDING_HEADLINE,
+  LANDING_TAGLINE,
+  LANDING_TRUST,
+  PRIMARY_CTA_CREATE_GROUP,
+} from "@/lib/marketing-copy";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function LandingPage() {
@@ -15,68 +22,92 @@ export default async function LandingPage() {
     redirect("/home");
   }
 
+  const createGroupHref = `/api/auth/google?next=${encodeURIComponent("/grupo")}`;
+
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-5 py-8 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
       <CopaHero
         size="landing"
         eyebrow="Copa do Mundo 2026"
-        title={APP_NAME}
+        title={LANDING_HEADLINE}
         subtitle={
           <>
-            <div className="mb-4 flex items-start gap-4">
-              <CopaBadge
-                size={56}
-                className="shrink-0 rounded-full bg-white/95 p-1"
-              />
-              <p>
-                Registre repetidas, entre no grupo da família ou amigos e
-                descubra automaticamente as melhores trocas. Sem planilha, sem
-                horas na mesa.
-              </p>
-            </div>
-            <ul className="space-y-2 text-sm">
-              <li>✓ {TOTAL_STICKERS} figurinhas do álbum oficial</li>
-              <li>✓ Match automático dentro do seu grupo</li>
-              <li>✓ Convite e proposta de troca no WhatsApp</li>
-            </ul>
+            <p className="font-semibold text-white">{LANDING_TAGLINE}</p>
+            <p className="mt-3">{LANDING_BODY}</p>
           </>
         }
         action={
           <ButtonLink
-            href="/api/auth/google?next=/home"
+            href={createGroupHref}
             variant="onBrand"
             fullWidth
-            className="min-h-12"
+            className="min-h-12 text-base font-bold"
           >
-            Entrar com Google
+            {PRIMARY_CTA_CREATE_GROUP}
           </ButtonLink>
         }
       />
 
-      <section className="mt-8 grid gap-4 sm:grid-cols-3">
-        {[
-          {
-            title: "1. Entre no grupo",
-            text: "Crie ou use o link de convite do WhatsApp.",
-          },
-          {
-            title: "2. Marque o que tem",
-            text: "Na aba Figurinhas, toque nas que você possui.",
-          },
-          {
-            title: "3. Veja quem combina",
-            text: "Ranking de trocas só com seu círculo.",
-          },
-        ].map((step) => (
-          <article key={step.title} className="fluent-card p-5">
-            <h2 className="font-display font-semibold text-ink">{step.title}</h2>
-            <p className="mt-2 text-sm leading-6 text-ink-soft">{step.text}</p>
-          </article>
-        ))}
+      <p className="mt-4 text-center text-sm leading-6 text-ink-soft">
+        {LANDING_TRUST}
+      </p>
+
+      <p className="mt-3 text-center text-xs text-ink-muted">
+        Recebeu convite?{" "}
+        <Link
+          href="/login?next=/grupo"
+          className="font-semibold text-accent underline underline-offset-2"
+        >
+          Entrar com código
+        </Link>
+      </p>
+
+      <section className="mt-10 space-y-4">
+        <h2 className="text-center font-display text-lg font-semibold text-ink">
+          Como funciona
+        </h2>
+        <div className="grid gap-3">
+          {[
+            {
+              title: "1. Crie seu grupo",
+              text: "Família, escola, trabalho ou bairro — leva menos de 1 minuto.",
+            },
+            {
+              title: "2. Mande no WhatsApp",
+              text: "Mensagem pronta para o grupo. Quem entrar já aparece combinado com você.",
+            },
+            {
+              title: "3. Marque o álbum",
+              text: "O que tem, repetidas e faltantes — o app faz o match sozinho.",
+            },
+          ].map((step) => (
+            <article key={step.title} className="fluent-card p-5">
+              <h3 className="font-display font-semibold text-ink">{step.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-ink-soft">{step.text}</p>
+            </article>
+          ))}
+        </div>
       </section>
 
-      <p className="mt-8 text-center text-xs text-ink-muted">
-        {APP_URL} · Projeto comunitário para colecionadores
+      <section className="mt-8 fluent-card p-5">
+        <h2 className="font-display font-semibold text-ink">
+          O app oficial do seu grupo
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-ink-soft">
+          Não é marketplace aberto. É a ferramenta do seu círculo — escola,
+          condomínio, empresa, igreja, escolinha ou papelaria do bairro. Troca
+          presencial, entre pessoas de confiança.
+        </p>
+      </section>
+
+      <div className="mt-8">
+        <ButtonLink href={createGroupHref} fullWidth className="min-h-12">
+          {PRIMARY_CTA_CREATE_GROUP}
+        </ButtonLink>
+      </div>
+
+      <p className="mt-6 text-center text-xs text-ink-muted">
+        {APP_URL}
       </p>
     </main>
   );
