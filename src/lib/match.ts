@@ -15,7 +15,6 @@ type TradeProfile = {
 
 const MAX_PER_SIDE = 8;
 const MAX_RATIO = 2.5;
-const MAX_ONE_SIDED = 3;
 
 function buildTradeProfile(
   userId: string,
@@ -51,19 +50,7 @@ function selectBalancedSubset(
   giveAll: string[],
   market?: GroupMarket,
 ): { receive: string[]; give: string[] } | null {
-  if (receiveAll.length === 0 && giveAll.length === 0) return null;
-
-  if (receiveAll.length === 0 || giveAll.length === 0) {
-    const isReceiveOnly = receiveAll.length > 0;
-    const codes = isReceiveOnly ? receiveAll : giveAll;
-    const sorted = [...codes].sort(
-      (a, b) => stickerTradeValue(b, market) - stickerTradeValue(a, market),
-    );
-    const capped = sorted.slice(0, Math.min(MAX_ONE_SIDED, MAX_PER_SIDE));
-    return isReceiveOnly
-      ? { receive: capped, give: [] }
-      : { receive: [], give: capped };
-  }
+  if (receiveAll.length === 0 || giveAll.length === 0) return null;
 
   const ratio =
     Math.max(receiveAll.length, giveAll.length) /
@@ -160,10 +147,6 @@ function scoreBalancedTrade(
 
   score -= Math.abs(receive.length - give.length) * 6;
 
-  if (receive.length === 0 || give.length === 0) {
-    score = Math.max(1, Math.floor(score * 0.35));
-  }
-
   score += heatScore;
   return score;
 }
@@ -211,9 +194,9 @@ export function computeTradeMatches(
 
     const balanced = selectBalancedSubset(receiveAll, giveAll, market);
     if (!balanced) continue;
-    if (balanced.receive.length === 0 && balanced.give.length === 0) continue;
 
     const { receive, give } = balanced;
+    if (receive.length === 0 || give.length === 0) continue;
 
     let heatScore = 0;
     let bargainPower = 0;

@@ -33,10 +33,10 @@ function toggleCode(list: string[], code: string) {
 
 function balanceHint(giveCount: number, receiveCount: number) {
   if (giveCount === 0 && receiveCount === 0) {
-    return "Selecione ao menos uma figurinha para propor.";
+    return "Selecione figurinhas dos dois lados para propor a troca.";
   }
   if (giveCount === 0 || receiveCount === 0) {
-    return "Troca só de um lado — ok, mas trocas equilibradas costumam ser aceitas mais.";
+    return "Troca inválida — selecione o que você entrega e o que recebe.";
   }
   const ratio =
     Math.max(giveCount, receiveCount) / Math.min(giveCount, receiveCount);
@@ -107,7 +107,7 @@ export function TradeProposePanel({
     [selectedGive.length, selectedReceive.length],
   );
 
-  const canPropose = selectedGive.length > 0 || selectedReceive.length > 0;
+  const canPropose = selectedGive.length > 0 && selectedReceive.length > 0;
   const partnerFirst = partnerName.split(" ")[0];
 
   async function handlePropose() {

@@ -166,6 +166,49 @@ describe("computeTradeMatches", () => {
     expect(matches[0].give.length).toBeGreaterThan(0);
   });
 
+  it("ignores one-sided overlaps (receive only or give only)", () => {
+    const receiveOnly = computeTradeMatches(
+      userId,
+      [],
+      ["FWC16", "CPV09", "RSA03"],
+      [
+        {
+          userId: partnerId,
+          name: "Rafaella",
+          avatarUrl: null,
+          duplicates: [
+            { code: "FWC16", quantity: 2 },
+            { code: "CPV09", quantity: 2 },
+            { code: "RSA03", quantity: 2 },
+          ],
+          needs: ["BRA01"],
+        },
+      ],
+    );
+
+    expect(receiveOnly).toEqual([]);
+
+    const giveOnly = computeTradeMatches(
+      userId,
+      [
+        { code: "BRA01", quantity: 2 },
+        { code: "BRA02", quantity: 2 },
+      ],
+      [],
+      [
+        {
+          userId: partnerId,
+          name: "Parceiro",
+          avatarUrl: null,
+          duplicates: [{ code: "MEX01", quantity: 2 }],
+          needs: ["BRA01", "BRA02"],
+        },
+      ],
+    );
+
+    expect(giveOnly).toEqual([]);
+  });
+
   it("sorts matches by score descending", () => {
     const matches = computeTradeMatches(
       userId,

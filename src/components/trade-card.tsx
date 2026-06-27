@@ -131,7 +131,7 @@ export function TradeCard({
         </div>
       </div>
 
-      {match.receiveCount > 0 || match.giveCount > 0 ? (
+      {match.receiveCount > 0 && match.giveCount > 0 ? (
         <div className="mt-4">
           <TradeProposePanel
             groupId={groupId}

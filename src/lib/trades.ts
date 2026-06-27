@@ -412,8 +412,11 @@ export async function createPendingTrade(
   if (partnerId === userId) {
     return { ok: false, error: "Parceiro inválido." };
   }
-  if (giveCodes.length === 0 && receiveCodes.length === 0) {
-    return { ok: false, error: "Nada para combinar nesta troca." };
+  if (giveCodes.length === 0 || receiveCodes.length === 0) {
+    return {
+      ok: false,
+      error: "Troca precisa ter figurinhas dos dois lados — você entrega e recebe.",
+    };
   }
 
   const { data: membership } = await supabase

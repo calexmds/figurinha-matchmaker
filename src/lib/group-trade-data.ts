@@ -400,6 +400,22 @@ export function summarizeTradeDiagnostics(
     };
   }
 
+  if (yourNeedsTheyHave.length > 0 && yourDupsTheyNeed.length === 0) {
+    return {
+      title: `${groupName}: você precisa, mas não tem o que oferecer`,
+      detail:
+        "Alguém tem repetidas que faltam no seu álbum, mas nenhuma delas precisa das suas repetidas. Marque mais repetidas em Figurinhas ou convide mais gente — troca só aparece quando os dois lados ganham.",
+    };
+  }
+
+  if (yourNeedsTheyHave.length === 0 && yourDupsTheyNeed.length > 0) {
+    return {
+      title: `${groupName}: você pode ajudar, mas não precisa de nada deles`,
+      detail:
+        "Você tem repetidas que alguém precisa, mas eles não têm o que falta para você. Aguarde novos cadastros no grupo ou marque mais figurinhas faltantes.",
+    };
+  }
+
   return {
     title: `${groupName}: cruzamento detectado, match não montou`,
     detail:

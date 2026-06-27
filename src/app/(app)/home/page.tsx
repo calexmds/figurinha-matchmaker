@@ -16,15 +16,15 @@ import {
   WHATSAPP_SHARE_LABEL,
 } from "@/lib/marketing-copy";
 import {
+  computeTradeMatches,
+} from "@/lib/match";
+import {
   buildGroupIntelligence,
   membersFromTradeData,
 } from "@/lib/group-intelligence";
 import { getUserTradeSummary } from "@/lib/data";
 import { buildGroupProgress } from "@/lib/group-progress";
-import {
-  countNeedsAvailableFromTradeData,
-  getCachedGroupTradeData,
-} from "@/lib/group-trade-data";
+import { getCachedGroupTradeData } from "@/lib/group-trade-data";
 import { getUserGroupsWithMembers } from "@/lib/groups";
 
 export default async function HomePage() {
@@ -44,7 +44,14 @@ export default async function HomePage() {
         user.id,
       );
       const progress = buildGroupProgress(g.members, tradeData, user.id);
-      return { group: g, tradeData, intelligence, progress };
+      const matches = computeTradeMatches(
+        user.id,
+        tradeData.currentDuplicates,
+        tradeData.currentNeeds,
+        tradeData.members,
+        intelligence.market,
+      );
+      return { group: g, tradeData, intelligence, progress, matches };
     }),
   );
 
@@ -52,10 +59,10 @@ export default async function HomePage() {
     (s): s is NonNullable<typeof s> => !!s,
   );
 
-  const availableInGroups = validSnapshots.reduce((sum, s) => {
-    if (needs.length === 0) return sum;
-    return sum + countNeedsAvailableFromTradeData(s.tradeData, needs);
-  }, 0);
+  const bilateralMatchCount = validSnapshots.reduce(
+    (sum, s) => sum + s.matches.length,
+    0,
+  );
 
   const heroSnapshot = validSnapshots.reduce<(typeof validSnapshots)[0] | null>(
     (best, current) => {
@@ -105,8 +112,8 @@ export default async function HomePage() {
       : groups.length === 0
         ? LANDING_HEADLINE
         : hasLists
-          ? availableInGroups > 0
-            ? `${availableInGroups} trocas possíveis no seu grupo`
+          ? bilateralMatchCount > 0
+            ? `${bilateralMatchCount} ${bilateralMatchCount === 1 ? "troca bilateral" : "trocas bilaterais"} no seu grupo`
             : "Pronto para trocar"
           : "Marque seu álbum em 2 minutos";
 
@@ -163,9 +170,10 @@ export default async function HomePage() {
             <ButtonLink href="/onboarding" variant="onBrand" fullWidth>
               Cadastrar figurinhas
             </ButtonLink>
-          ) : availableInGroups > 0 ? (
+          ) : bilateralMatchCount > 0 ? (
             <ButtonLink href="/trocas" variant="onBrand" fullWidth>
-              Ver {availableInGroups} oportunidades de troca
+              Ver {bilateralMatchCount}{" "}
+              {bilateralMatchCount === 1 ? "sugestão de troca" : "sugestões de troca"}
             </ButtonLink>
           ) : undefined
         }
@@ -226,8 +234,8 @@ export default async function HomePage() {
           accent="green"
         />
         <StatCard
-          label="Nos grupos p/ você"
-          value={availableInGroups}
+          label="Sugestões de troca"
+          value={bilateralMatchCount}
           accent="white"
         />
         {goldenCount > 0 ? (
