@@ -40,6 +40,7 @@ type GabaritoProps = {
   initialReservedGiveCounts?: Record<string, number>;
   initialReservedReceive?: string[];
   initialHeatLevels?: Record<string, HeatLevel>;
+  hideHelper?: boolean;
 };
 
 export function Gabarito({
@@ -51,6 +52,7 @@ export function Gabarito({
   initialReservedGiveCounts = {},
   initialReservedReceive = [],
   initialHeatLevels = {},
+  hideHelper = false,
 }: GabaritoProps) {
   const sparse = isSparseMode(entryMode);
   const reservedGive = useRef(new Set(initialReservedGive));
@@ -367,20 +369,20 @@ export function Gabarito({
   const helperLine = sparse
     ? tab === "preciso"
       ? precisoShowAll
-        ? "Toque nas que você NÃO tem. As acinzentadas já contam como no álbum."
-        : "Mostrando só o que falta. Use busca ou “Ver álbum” para navegar pelo resto."
+        ? "Toque nas que faltam."
+        : "Só o que falta. Use busca ou Ver álbum."
       : tab === "repetidas"
         ? repetidasShowAll
-          ? "Toque nas repetidas (+1 extra). Segure para ajustar a quantidade."
-          : "Mostrando só repetidas marcadas. Toque em “Ver álbum” para adicionar outras."
-        : "Visão geral — assumimos que você tem tudo, exceto o marcado em Preciso."
+          ? "Toque nas repetidas. Segure para quantidade."
+          : "Só repetidas marcadas."
+        : "Visão geral do álbum."
     : tab === "tenho"
-      ? "Toque para marcar que você tem (+1). Segure para ajustar a quantidade. O app calcula repetidas e preciso sozinho."
+      ? "Toque para marcar. Segure para quantidade."
       : tab === "repetidas"
-        ? "Somente leitura — figurinhas com mais de 1 cópia (extras para trocar)."
+        ? "Extras para trocar (somente leitura)."
         : precisoShowAll
-          ? "Verde = já tenho · Ciano = ainda falta."
-          : "Mostrando só o que falta. Use “Ver álbum” para rever figurinhas já marcadas em Tenho.";
+          ? "Verde = tenho · Ciano = falta."
+          : "Só o que falta.";
 
   return (
     <div className="space-y-4">
@@ -512,7 +514,9 @@ export function Gabarito({
         </div>
       </div>
 
-      <p className="text-xs leading-5 text-ink-soft">{helperLine}</p>
+      {hideHelper ? null : (
+        <p className="text-xs leading-5 text-ink-soft">{helperLine}</p>
+      )}
 
       {Object.keys(initialHeatLevels).length > 0 && tab !== "preciso" ? (
         <p className="text-[11px] leading-4 text-ink-muted">

@@ -11,10 +11,11 @@ import { buildGroupProgress } from "@/lib/group-progress";
 import { getCachedGroupTradeData } from "@/lib/group-trade-data";
 import { normalizeInviteCode } from "@/lib/invite";
 import {
-  GROUP_CREATED_BODY,
-  GROUP_CREATED_TITLE,
-  PRIMARY_CTA_CREATE_GROUP,
-  WHATSAPP_SHARE_LABEL,
+  GROUP_CREATED_BODY_SHORT,
+  GROUP_CREATED_TITLE_SHORT,
+  HOME_CTA_MARK_ALBUM,
+  PRIMARY_CTA_CREATE_GROUP_SHORT,
+  WHATSAPP_SHARE_LABEL_SHORT,
 } from "@/lib/marketing-copy";
 import { buildInviteMessage } from "@/lib/whatsapp";
 
@@ -56,71 +57,36 @@ export default async function GroupPage({
     }
   }
 
+  const hasGroups = groups.length > 0;
+
   return (
     <div className="space-y-6">
       {createdGroup ? (
-        <Callout variant="success" title={GROUP_CREATED_TITLE}>
-          <p>{GROUP_CREATED_BODY}</p>
+        <Callout variant="success" title={GROUP_CREATED_TITLE_SHORT}>
+          <p>{GROUP_CREATED_BODY_SHORT}</p>
           <div className="mt-4 flex flex-col gap-2">
             <WhatsAppShareButton
               message={buildInviteMessage(
                 createdGroup.name,
                 createdGroup.inviteCode,
               )}
-              label={WHATSAPP_SHARE_LABEL}
+              label={WHATSAPP_SHARE_LABEL_SHORT}
               className="w-full"
             />
             <ButtonLink href="/onboarding" variant="outline" fullWidth>
-              Cadastrar minhas figurinhas
+              {HOME_CTA_MARK_ALBUM}
             </ButtonLink>
           </div>
         </Callout>
       ) : null}
 
-      <p className="text-sm leading-6 text-ink-soft">
-        O app oficial do seu grupo de troca. Crie para família, escola, trabalho,
-        bairro ou papelaria — cada pessoa marca o álbum e o match acontece
-        automaticamente.
-      </p>
-
       {query.error ? (
         <Callout variant="error">{decodeURIComponent(query.error)}</Callout>
       ) : null}
 
-      <form action={createGroupAction} className="fluent-card space-y-4 p-5">
-        <h2 className="text-lg font-semibold text-ink">Novo grupo de troca</h2>
-        <Input
-          name="name"
-          placeholder="Ex: Família Silva, Escola ABC, Papelaria do Zé"
-          required
-        />
-        <Button type="submit" fullWidth className="min-h-12">
-          {PRIMARY_CTA_CREATE_GROUP}
-        </Button>
-      </form>
-
-      <form action={joinGroupWithCode} className="fluent-card space-y-4 p-5">
-        <h2 className="text-lg font-semibold text-ink">Entrar com convite</h2>
-        <p className="text-sm text-ink-soft">
-          Recebeu link ou código no WhatsApp? Cole aqui.
-        </p>
-        <Input
-          name="inviteCode"
-          placeholder="COPA-XXXX"
-          className="uppercase placeholder:normal-case"
-          required
-        />
-        <Button type="submit" variant="outline" fullWidth>
-          Entrar no grupo
-        </Button>
-      </form>
-
-      {groups.length > 0 ? (
+      {hasGroups ? (
         <section className="space-y-3">
           <h2 className="text-lg font-semibold text-ink">Seus grupos</h2>
-          <p className="text-sm text-ink-soft">
-            Toque no grupo para convidar mais gente ou ver quem já cadastrou.
-          </p>
           {groupsWithProgress.map(({ group, progress }) => (
             <GroupCard
               key={group.id}
@@ -130,6 +96,71 @@ export default async function GroupPage({
             />
           ))}
         </section>
+      ) : (
+        <>
+          <p className="text-sm text-ink-soft">
+            Crie o grupo da família, escola ou bairro.
+          </p>
+
+          <form action={createGroupAction} className="fluent-card space-y-4 p-5">
+            <Input
+              name="name"
+              placeholder="Ex: Família Silva, Escola ABC"
+              required
+            />
+            <Button type="submit" fullWidth className="min-h-12">
+              {PRIMARY_CTA_CREATE_GROUP_SHORT}
+            </Button>
+          </form>
+
+          <details className="fluent-card p-4">
+            <summary className="cursor-pointer text-sm font-semibold text-accent">
+              Já tem convite?
+            </summary>
+            <form action={joinGroupWithCode} className="mt-4 space-y-3">
+              <Input
+                name="inviteCode"
+                placeholder="COPA-XXXX"
+                className="uppercase placeholder:normal-case"
+                required
+              />
+              <Button type="submit" variant="outline" fullWidth>
+                Entrar no grupo
+              </Button>
+            </form>
+          </details>
+        </>
+      )}
+
+      {hasGroups ? (
+        <details className="fluent-card p-4">
+          <summary className="cursor-pointer text-sm font-semibold text-ink-soft">
+            Criar ou entrar em outro grupo
+          </summary>
+          <div className="mt-4 space-y-4">
+            <form action={createGroupAction} className="space-y-3">
+              <Input
+                name="name"
+                placeholder="Nome do novo grupo"
+                required
+              />
+              <Button type="submit" variant="outline" fullWidth>
+                Criar grupo
+              </Button>
+            </form>
+            <form action={joinGroupWithCode} className="space-y-3">
+              <Input
+                name="inviteCode"
+                placeholder="COPA-XXXX"
+                className="uppercase placeholder:normal-case"
+                required
+              />
+              <Button type="submit" variant="ghost" fullWidth>
+                Entrar com código
+              </Button>
+            </form>
+          </div>
+        </details>
       ) : null}
 
       <form action={signOut} className="pt-2">

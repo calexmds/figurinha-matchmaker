@@ -65,18 +65,11 @@ export default async function OnboardingPage({
       {modeJustSet ? (
         <Callout variant="success" className="p-4">
           {query.mode_set === "sparse" || (sparse && query.mode_set === "1") ? (
-            <>
-              Modo rápido ativado! Comece pela aba{" "}
-              <strong className="text-ink">Preciso</strong> — marque só o que
-              falta. Use a busca se souber o código ou seleção.
-            </>
+            <>Modo rápido! Marque o que falta na aba Preciso.</>
           ) : query.mode_set === "have" ? (
-            <>
-              Modo Tenho ativado! Marque cada figurinha que você possui na aba{" "}
-              <strong className="text-ink">Tenho</strong>.
-            </>
+            <>Modo Tenho! Marque o que possui na aba Tenho.</>
           ) : (
-            <>Modo configurado! Continue marcando suas figurinhas abaixo.</>
+            <>Pronto! Continue marcando abaixo.</>
           )}
         </Callout>
       ) : null}
@@ -104,6 +97,7 @@ export default async function OnboardingPage({
         initialReservedGive={[...reservations.give.keys()]}
         initialReservedGiveCounts={Object.fromEntries(reservations.give)}
         initialReservedReceive={[...reservations.receive]}
+        hideHelper={modeJustSet}
       />
     </div>
   );

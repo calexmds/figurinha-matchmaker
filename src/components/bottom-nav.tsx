@@ -7,8 +7,8 @@ import { cn } from "@/lib/cn";
 
 const tabs = [
   {
-    href: "/home",
-    label: "Início",
+    href: "/onboarding",
+    label: "Álbum",
     icon: (active: boolean) => (
       <svg
         width="22"
@@ -19,24 +19,8 @@ const tabs = [
         strokeWidth={active ? 2.5 : 2}
         aria-hidden="true"
       >
-        <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5Z" />
-      </svg>
-    ),
-  },
-  {
-    href: "/trocas",
-    label: "Trocas",
-    icon: (active: boolean) => (
-      <svg
-        width="22"
-        height="22"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={active ? 2.5 : 2}
-        aria-hidden="true"
-      >
-        <path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5" />
+        <rect x="4" y="3" width="16" height="18" rx="2" />
+        <path d="M8 7h8M8 11h8M8 15h5" />
       </svg>
     ),
   },
@@ -58,8 +42,8 @@ const tabs = [
     ),
   },
   {
-    href: "/onboarding",
-    label: "Figurinhas",
+    href: "/trocas",
+    label: "Trocas",
     icon: (active: boolean) => (
       <svg
         width="22"
@@ -70,8 +54,24 @@ const tabs = [
         strokeWidth={active ? 2.5 : 2}
         aria-hidden="true"
       >
-        <rect x="4" y="3" width="16" height="18" rx="2" />
-        <path d="M8 7h8M8 11h8M8 15h5" />
+        <path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5" />
+      </svg>
+    ),
+  },
+  {
+    href: "/home",
+    label: "Próximo",
+    icon: (active: boolean) => (
+      <svg
+        width="22"
+        height="22"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={active ? 2.5 : 2}
+        aria-hidden="true"
+      >
+        <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5Z" />
       </svg>
     ),
   },

@@ -3,10 +3,10 @@ import { APP_NAME } from "@/lib/constants";
 import { CopaBadge } from "@/components/copa-badge";
 
 const titles: Record<string, string> = {
-  "/home": "Início",
+  "/home": "Próximo passo",
   "/trocas": "Trocas",
   "/grupo": "Grupo",
-  "/onboarding": "Figurinhas",
+  "/onboarding": "Álbum",
   "/onboarding/welcome": "Começar",
 };
 

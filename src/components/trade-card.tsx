@@ -59,46 +59,30 @@ export function TradeCard({
         <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#ffd966] via-[#ff8c00] to-golden" />
       ) : null}
 
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-accent">
-              #{rank} melhor troca
-            </p>
-            {groupName ? (
-              <span className="rounded-full bg-[#eaf3fb] px-2 py-0.5 text-[10px] font-semibold text-accent">
-                {groupName}
-              </span>
-            ) : null}
-            {hasGoldenGive ? (
-              <span className="rounded-full bg-gradient-to-r from-[#fff3cc] to-[#ffe8a3] px-2 py-0.5 text-[10px] font-bold uppercase text-win-amber ring-1 ring-golden/40">
-                Poder de ouro
-              </span>
-            ) : hasHotGive ? (
-              <span className="rounded-full bg-[#fff4e6] px-2 py-0.5 text-[10px] font-bold uppercase text-[#c45c00]">
-                Barganha quente
-              </span>
-            ) : null}
-          </div>
-          <h3 className="font-display mt-1 text-xl font-bold text-ink">
+      <div>
+        {rank === 1 ? (
+          <p className="text-xs font-semibold uppercase tracking-wide text-accent">
+            Melhor troca
+          </p>
+        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="font-display text-xl font-bold text-ink">
             {match.name}
           </h3>
-          <p className="mt-1 text-sm text-ink-soft">
-            Score {match.score}
-            {match.heatScore ? (
-              <span className="text-[#c45c00]"> · +{match.heatScore} radar</span>
-            ) : null}{" "}
-            · Você recebe {match.receiveCount} · Você entrega {match.giveCount}
-          </p>
+          {groupName ? (
+            <span className="rounded-full bg-[#eaf3fb] px-2 py-0.5 text-[10px] font-semibold text-accent">
+              {groupName}
+            </span>
+          ) : null}
         </div>
+        <p className="mt-1 text-sm text-ink-soft">
+          Recebe {match.receiveCount} · Entrega {match.giveCount}
+        </p>
       </div>
 
       {match.bargainTip ? (
         <div className="mt-4 rounded-xl border border-golden/30 bg-gradient-to-r from-[#fffbeb] to-[#fff8e6] px-4 py-3">
-          <p className="text-xs font-bold uppercase tracking-wide text-win-amber">
-            Dica de negociação
-          </p>
-          <p className="mt-1 text-sm leading-6 text-[#5c4a1a]">{match.bargainTip}</p>
+          <p className="text-sm leading-6 text-[#5c4a1a]">{match.bargainTip}</p>
         </div>
       ) : null}
 

@@ -33,20 +33,20 @@ function toggleCode(list: string[], code: string) {
 
 function balanceHint(giveCount: number, receiveCount: number) {
   if (giveCount === 0 && receiveCount === 0) {
-    return "Selecione figurinhas dos dois lados para propor a troca.";
+    return "Selecione figurinhas dos dois lados.";
   }
   if (giveCount === 0 || receiveCount === 0) {
-    return "Troca inválida — selecione o que você entrega e o que recebe.";
+    return "Selecione o que entrega e o que recebe.";
   }
   const ratio =
     Math.max(giveCount, receiveCount) / Math.min(giveCount, receiveCount);
   if (ratio > 2.5) {
-    return "Pacote desequilibrado — considere equilibrar os lados para facilitar o aceite.";
+    return "Pacote desequilibrado — tente equilibrar.";
   }
   if (giveCount === receiveCount) {
-    return "Troca equilibrada — boa chance de aceite.";
+    return "Troca equilibrada.";
   }
-  return "Revise a combinação antes de enviar a proposta.";
+  return "Revise antes de enviar.";
 }
 
 function ChipToggle({
@@ -134,7 +134,7 @@ export function TradeProposePanel({
   if (hasPendingWithPartner) {
     return (
       <Callout variant="warning" className="p-4">
-        Já existe uma proposta ou troca aberta com {partnerFirst} neste grupo.
+        Já existe uma proposta aberta com {partnerFirst}.
       </Callout>
     );
   }
@@ -146,30 +146,35 @@ export function TradeProposePanel({
 
   return (
     <div className="flex flex-col gap-2">
-      <Button
-        type="button"
-        onClick={openEditor}
-        fullWidth
-        className={primaryClass}
-      >
-        Ajustar e propor troca
-      </Button>
-
       <form action={combineTrade}>
         <input type="hidden" name="groupId" value={groupId} />
         <input type="hidden" name="partnerId" value={partnerId} />
         <input type="hidden" name="give" value={suggestedGive.join(",")} />
         <input type="hidden" name="receive" value={suggestedReceive.join(",")} />
-        <Button type="submit" variant="ghost" fullWidth>
-          Propor sugestão sem alterar
+        <Button type="submit" fullWidth className={primaryClass}>
+          Propor troca
         </Button>
       </form>
+
+      <Button type="button" onClick={openEditor} variant="outline" fullWidth>
+        Ajustar troca
+      </Button>
+
+      <WhatsAppShareButton
+        message={buildTradeMessage(
+          partnerName,
+          open ? selectedReceive : suggestedReceive,
+          open ? selectedGive : suggestedGive,
+        )}
+        label={`WhatsApp com ${partnerFirst}`}
+        className="w-full"
+      />
 
       <Sheet
         open={open}
         onClose={() => setOpen(false)}
         title={`Ajustar troca com ${partnerFirst}`}
-        description="Marque o que entra na proposta. Só aparecem figurinhas válidas para vocês dois."
+        description="Marque o que entra na proposta."
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
@@ -249,16 +254,6 @@ export function TradeProposePanel({
           </Button>
         </div>
       </Sheet>
-
-      <WhatsAppShareButton
-        message={buildTradeMessage(
-          partnerName,
-          open ? selectedReceive : suggestedReceive,
-          open ? selectedGive : suggestedGive,
-        )}
-        label={`Combinar com ${partnerFirst} no WhatsApp`}
-        className="w-full"
-      />
     </div>
   );
 }
